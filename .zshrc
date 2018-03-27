@@ -23,6 +23,7 @@ HISTSIZE=10000
 SAVEHIST=10000
 
 alias vim=nvim
+alias ll=ls -l
 
 
 bindkey '^r' history-incremental-pattern-search-backward
