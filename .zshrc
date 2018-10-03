@@ -23,7 +23,7 @@ HISTSIZE=10000
 SAVEHIST=10000
 
 alias vim=nvim
-alias ll=ls -l
+alias ll='ls -al'
 
 
 bindkey '^r' history-incremental-pattern-search-backward
@@ -40,6 +40,7 @@ zstyle ":chpwd:*" recent-dirs-default true
 
 export GOPATH=$HOME/go
 export PATH=$PATH:/usr/local/bin:$HOME/.anyenv/bin:$GOPATH/bin
+export PATH=$HOME/.cargo/env:$PATH
 export JAVA_HOME=`/usr/libexec/java_home -v 1.8`
 
 eval "$(anyenv init -)"
