@@ -1,12 +1,20 @@
-source ~/.zshrc.zplug
-export LANG=ja_JP.UTF-8
+### Added by Zplugin's installer
+source "$HOME/.zplugin/bin/zplugin.zsh"
+autoload -Uz _zplugin
+(( ${+_comps} )) && _comps[zplugin]=_zplugin
+### End of Zplugin installer's chunk
 
-# emacs bind
+### plugin ###
+zplugin light zsh-users/zsh-autosuggestions
+zplugin light zsh-users/zsh-syntax-highlighting
+zplugin ice depth=1; zplugin light romkatv/powerlevel10k
+
+[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+
+# emac bind
 bindkey -e
 
-##################
 # autoload
-##################
 autoload -Uz colors
 colors
 
@@ -15,7 +23,6 @@ compinit -C
 
 autoload -Uz add-zsh-hook
 autoload -Uz chpwd_recent_dirs cdr
-
 autoload -Uz vcs_info
 
 HISTFILE=~/.zsh_history
@@ -40,8 +47,19 @@ zstyle ":chpwd:*" recent-dirs-default true
 
 export GOPATH=$HOME/go
 export PATH=$PATH:/usr/local/bin:$HOME/.anyenv/bin:$GOPATH/bin
+#export PATH=$HOME/.nodenv/shims:$(pyenv root)/shims:$PATH
 export PATH=$HOME/.cargo/env:$PATH
+export PATH=$HOME/flutter/bin:$PATH
+export PATH=$HOME/flutter/cache/dart-sdk/bin:$PATH
+export PATH=$HOME/flutter/.pub-cache/bin:$PATH
+export PATH="/Users/tamura/.deno/bin:$PATH"
 export JAVA_HOME=`/usr/libexec/java_home -v 1.8`
+
+# pyenv
+export PYENV_ROOT=/usr/local/var/pyenv
+if which pyenv > /dev/null; then eval "$(pyenv init -)"; fi
+if which pyenv-virtualenv-init > /dev/null; then eval "$(pyenv virtualenv-init -)"; fi
+
 
 eval "$(anyenv init -)"
 
@@ -101,7 +119,7 @@ function zaw-src-gitdir-cd () {
   BUFFER="cd $1"
   zle accept-line
 }
-zaw-register-src -n gitdir zaw-src-gitdir
+#zaw-register-src -n gitdir zaw-src-gitdir
 
 # git statusをpromptに表示させるため
 function _update_vcs_info_msg {
@@ -126,9 +144,9 @@ setopt no_beep
 
 setopt no_nomatch
 # prompt内で変数展開など
-setopt prompt_subst
+#setopt prompt_subst
 # prompt実行中は右promptを隠す
-setopt transient_rprompt
+#setopt transient_rprompt
 # 直前と同じコマンドラインはヒストリーに追加しない
 setopt hist_ignore_dups
 # 重複したヒストリーは追加しない
@@ -182,5 +200,8 @@ setopt histignorealldups
 add-zsh-hook precmd _update_vcs_info_msg
 
 # %1vでpsvar[1]を呼び出したりしてる
-PROMPT="%(?.%{${fg[green]}%}.%{${fg[red]}%})%n${reset_color}@${fg[blue]}%m${reset_color}(%*%) %F{green}%1v%f%F{yellow}%2v%f%F{red}%3v%f%~
-%# "
+#PROMPT="%(?.%{${fg[green]}%}.%{${fg[red]}%})%n${reset_color}@${fg[blue]}%m${reset_color}(%*%) %F{green}%1v%f%F{yellow}%2v%f%F{red}%3v%f%~
+#%# "
+
+# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
+[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
