@@ -201,7 +201,3 @@ add-zsh-hook precmd _update_vcs_info_msg
 
 # %1vでpsvar[1]を呼び出したりしてる
 #PROMPT="%(?.%{${fg[green]}%}.%{${fg[red]}%})%n${reset_color}@${fg[blue]}%m${reset_color}(%*%) %F{green}%1v%f%F{yellow}%2v%f%F{red}%3v%f%~
-#%# "
-
-# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
-[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
