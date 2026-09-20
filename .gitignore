@@ -1,0 +1,45 @@
+# Machine-local overrides: keep only local/README.md tracked.
+/local/*
+!/local/README.md
+
+# Environment files and credential-bearing material.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+id_rsa
+id_ecdsa
+id_ed25519
+credentials
+credentials.*
+*credential*
+*secret*
+.netrc
+.git-credentials
+.kube/
+.aws/
+.config/gcloud/
+.docker/config.json
+.config/gh/hosts.yml
+
+# Temporary and generated files.
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
+.cache/
+tmp/
+
+# Editor and OS-generated files.
+.DS_Store
+._*
+.idea/
+.vscode/
+*.code-workspace

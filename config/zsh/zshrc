@@ -1,0 +1,21 @@
+# Interactive zsh setup shared across machines.
+
+# Prefer user-installed CLI tools once, even when zprofile has already run.
+typeset -U path PATH
+path=("$HOME/.local/bin" $path)
+export PATH
+
+# mise supplies language runtimes when it is installed on this machine.
+if command -v mise >/dev/null 2>&1; then
+  eval "$(mise activate zsh)"
+
+  # Derive JAVA_HOME from mise's selected Java executable, if one is available.
+  mise_java_bin="$(mise which java 2>/dev/null)"
+  if [[ -n "$mise_java_bin" && -x "$mise_java_bin" ]]; then
+    export JAVA_HOME="${mise_java_bin:A:h:h}"
+  fi
+  unset mise_java_bin
+fi
+
+alias codexa='codex --profile auto'
+alias codexf='codex --profile full'
