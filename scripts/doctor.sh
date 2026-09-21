@@ -53,8 +53,34 @@ present "Git" git --version
 present "mise" mise --version
 present "Homebrew" brew --version
 present "Nix" nix --version
-present "chezmoi" chezmoi --version
 present "Stow" stow --version
+
+section "Dotfiles (chezmoi)"
+if chezmoi_path="$(command -v chezmoi 2>/dev/null)"; then
+  printf '%-12s present  %s\n' "chezmoi" "$chezmoi_path"
+  printf '%-12s %s\n' "Version" "$(chezmoi --version 2>/dev/null | head -1 || printf unknown)"
+
+  if chezmoi_source="$(chezmoi source-path 2>/dev/null)"; then
+    printf '%-12s %s\n' "Source dir" "$chezmoi_source"
+  else
+    printf '%-12s not configured (no chezmoi config file or source directory)\n' "Source dir"
+  fi
+
+  if chezmoi_status="$(chezmoi status 2>/dev/null)"; then
+    if [ -n "$chezmoi_status" ]; then
+      printf '%-12s %s managed path(s) differ from the source state\n' "Status" \
+        "$(printf '%s\n' "$chezmoi_status" | wc -l | tr -d ' ')"
+      printf '%s\n' "$chezmoi_status" | sed 's/^/             /'
+      printf '%-12s review with "chezmoi diff" before applying anything\n' "Next"
+    else
+      printf '%-12s clean (managed paths match the source state)\n' "Status"
+    fi
+  else
+    printf '%-12s unavailable\n' "Status"
+  fi
+else
+  printf '%-12s missing  (macOS: brew install chezmoi)\n' "chezmoi"
+fi
 
 section "Editor"
 present "Neovim" nvim --version
@@ -77,5 +103,5 @@ present "Node.js" node --version
 present "Go" go version
 present "Rust" rustc --version
 
-printf '\nResult: diagnostic complete (no changes made).\n'
+printf '\nResult: diagnostic complete (no changes made; no apply was run).\n'
 exit 0

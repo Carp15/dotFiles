@@ -9,6 +9,6 @@
 | Node.js | `24` | major versionを宣言 |
 | npm | `11.15.0` | exact versionを維持 |
 
-managed copyは [`config/mise/config.toml`](../config/mise/config.toml) です。liveの `~/.config/mise/config.toml` は今回変更していません。実環境へ反映する場合は、miseの導入後に内容と対象環境を確認し、明示的にinstallしてください。
+source stateは `home/dot_config/mise/config.toml` で、配置先は `~/.config/mise/config.toml` です。liveは現在 `go = "latest"` で `node` 宣言がないため、`chezmoi status` に差分が出ます。反映する場合は `chezmoi diff` を確認してから `chezmoi apply` を実行し、tool本体は明示的にinstallしてください（[chezmoi](chezmoi.md) 参照）。
 
 mise本体、download/install cache、shims、migration stateは生成物または環境依存状態なのでGit管理しません。project固有のtoolはglobal設定へ混ぜず、各projectの `mise.toml` で管理します。secretやcredentialをmise設定へ保存しないでください。

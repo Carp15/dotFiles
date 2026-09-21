@@ -10,7 +10,11 @@ printf '%s\n' "$SHELL"
 command -v <command>
 
 # zsh configuration syntax check (does not change the live configuration)
-zsh -n config/zsh/zprofile config/zsh/zshrc
+zsh -n home/dot_zprofile home/dot_zshrc
+
+# source state と $HOME の差分（apply はしない）
+chezmoi status
+chezmoi diff
 
 # dotfiles 基盤の非破壊診断
 ./scripts/doctor.sh

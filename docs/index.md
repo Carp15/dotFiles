@@ -3,6 +3,7 @@
 `docs/` は設定の背景・判断・運用を理解するための層です。短いコマンドだけを探すときは [cheatsheets](../cheatsheets/README.md) を参照してください。
 
 - [Repository architecture](architecture.md) — 層とディレクトリの責務
+- [chezmoi](chezmoi.md) — dotfiles manager の採用理由、source state、運用手順
 - [Shell](shell.md) — 現在の shell と今後の記録方針
 - [Git](git.md) — Git 設定と運用の記録方針
 - [mise](mise.md) — 現在管理するtool version宣言と再現方針

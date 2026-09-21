@@ -1,0 +1,6 @@
+# Targets excluded from the chezmoi target state.
+#
+# This file is not a secret-management mechanism. Secrets are kept out of the
+# source state entirely; see docs/chezmoi.md. Only OS-generated noise that must
+# never be written back into $HOME belongs here.
+.DS_Store

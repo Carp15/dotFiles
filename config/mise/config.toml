@@ -1,8 +1,0 @@
-# User-level tools selected for the current Mac environment.
-# This file is a managed copy; it is not applied automatically.
-
-[tools]
-go = "1.26.3"
-java = "21"
-node = "24"
-npm = "11.15.0"

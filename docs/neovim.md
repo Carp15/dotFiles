@@ -12,9 +12,9 @@ config/nvim/  ← Git 管理する実体。ここを編集する
 ~/.config/nvim
 ```
 
-zsh・Git・mise は reference copy 方式（live をコピーして管理し、自動適用しない）です。Neovim 設定を同じ方式にすると、plugin 追加や keymap 調整のたびに live と managed の手動同期が必要になり、`lazy-lock.json` のような頻繁に変わる生成ファイルで乖離が起きます。そのため Neovim だけ実体を repository に置き、live 側を symlink にしました。
+zsh・Git・mise は chezmoi 管理（source state から `$HOME` へコピーとして適用）です。Neovim を同じ方式にすると、`:Lazy update` が書き換える `lazy-lock.json` を毎回 `chezmoi add` で source state へ取り込み直す必要があり、編集のたびに二重管理が発生します。そのため Neovim だけ実体を repository に置き、live 側を symlink にしています。
 
-この変更は dotfiles manager の選定（chezmoi / Nix + Home Manager / GNU Stow）ではありません。`scripts/link.sh` は宣言された link のみを扱う最小の仕組みで、manager を後から導入する余地を残しています。他の設定を symlink 方式へ移すかどうかは、移行のたびに個別に判断します。
+`scripts/link.sh` は宣言された link のみを扱う最小の仕組みです。chezmoi にも `.chezmoiexternal` や symlink 属性があるため、将来 chezmoi へ寄せる選択肢は残っています。移行するかどうかは、`lazy-lock.json` の扱いを決めたうえで個別に判断します。chezmoi 側の運用は [chezmoi](chezmoi.md) を参照してください。
 
 ## 配置と復元
 

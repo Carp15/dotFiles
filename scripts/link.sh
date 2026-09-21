@@ -32,8 +32,8 @@ case "${1:-}" in
 esac
 
 # Managed links: "<path relative to repo root>|<absolute destination>".
-# Only configuration that is intended to be edited in place belongs here. Reference
-# copies such as config/zsh and config/mise stay unlinked until they are migrated.
+# Only configuration that is intended to be edited in place belongs here. Everything
+# under home/ is managed by chezmoi instead and must never be listed here.
 links=(
   "config/nvim|$HOME/.config/nvim"
 )
