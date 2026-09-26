@@ -17,5 +17,11 @@ if command -v mise >/dev/null 2>&1; then
   unset mise_java_bin
 fi
 
+# Neovim stands in for vim when it is installed. The guard keeps the real vim
+# usable on machines without Neovim, instead of shadowing it with a broken alias.
+if command -v nvim >/dev/null 2>&1; then
+  alias vim='nvim'
+fi
+
 alias codexa='codex --profile auto'
 alias codexf='codex --profile full'

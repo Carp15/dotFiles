@@ -1,7 +1,8 @@
 # Shell quick reference
 
 ```bash
-# Codex profiles used on this Mac
+# Aliases
+vim     # nvim（Neovim がある環境のみ。実体の vim は \vim か /usr/bin/vim）
 codexa  # codex --profile auto
 codexf  # codex --profile full
 
