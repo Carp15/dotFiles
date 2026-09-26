@@ -7,7 +7,9 @@
 - `~/.local/bin` をPATHに加える（重複は避ける）。
 - macOSでは存在するHomebrewを検出して`brew shellenv`を読み込む。
 - miseがある環境だけでzsh integrationを有効にし、miseが選択したJava実行ファイルから`JAVA_HOME`を設定する。
-- `vim` は Neovim がある環境でのみ `nvim` の alias にする。存在チェックで囲んでいるため、Neovim が無い machine では実体の vim がそのまま使える。
+- `vim` は Neovim がある環境でのみ `nvim` の alias にする。存在チェックで囲んでいるため、Neovim が無い machine では実体の vim がそのまま使える。同じ条件で `EDITOR`/`VISUAL` も `nvim` にし、alias が効かない git や `chezmoi edit` でも Neovim を使う。
+- 履歴は `HISTFILE` を明示し（macOS 以外では既定が無いため）、10万件保存・タブ間共有・重複除去・時刻記録を有効にする。先頭にスペースを付けたコマンドは履歴に残らない。
+- `compinit` で補完を有効にする。`fpath` には `brew shellenv` が Homebrew の `site-functions` を入れるため、formula が入れた補完（chezmoi 等）も使える。
 - `codexa` は `codex --profile auto`、`codexf` は `codex --profile full` の短縮名。
 
 この source state は live の `~/.zprofile` / `~/.zshrc` とまだ一致していません。live 側には `/Users/<user>` の絶対 path、stale な Go の PATH 追加、Antigravity CLI installer が追記した重複 PATH が残っています。反映するには `chezmoi diff` を確認してから `chezmoi apply` を実行します（[chezmoi](chezmoi.md) 参照）。

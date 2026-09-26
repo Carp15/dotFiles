@@ -1,5 +1,15 @@
 # Interactive zsh setup shared across machines.
 
+# History: keep a long, shared, de-duplicated record. HISTFILE is set explicitly
+# because only macOS's /etc/zshrc provides a default location.
+HISTFILE="${ZDOTDIR:-$HOME}/.zsh_history"
+HISTSIZE=100000
+SAVEHIST=100000
+setopt share_history          # share history across running shells
+setopt hist_ignore_all_dups   # drop older duplicates of a repeated command
+setopt hist_ignore_space      # a leading space keeps a command out of history
+setopt extended_history       # record timestamps and durations
+
 # Prefer user-installed CLI tools once, even when zprofile has already run.
 typeset -U path PATH
 path=("$HOME/.local/bin" $path)
@@ -19,9 +29,15 @@ fi
 
 # Neovim stands in for vim when it is installed. The guard keeps the real vim
 # usable on machines without Neovim, instead of shadowing it with a broken alias.
+# EDITOR/VISUAL cover tools that do not see aliases, such as git and chezmoi.
 if command -v nvim >/dev/null 2>&1; then
   alias vim='nvim'
+  export EDITOR='nvim' VISUAL='nvim'
 fi
+
+# Completion. fpath already includes Homebrew's site-functions via brew shellenv
+# in zprofile, so compinit picks up completions installed by formulae.
+autoload -Uz compinit && compinit
 
 alias codexa='codex --profile auto'
 alias codexf='codex --profile full'

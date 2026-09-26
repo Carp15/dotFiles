@@ -6,6 +6,9 @@ vim     # nvim（Neovim がある環境のみ。実体の vim は \vim か /usr/
 codexa  # codex --profile auto
 codexf  # codex --profile full
 
+# 履歴に残したくないコマンドは先頭にスペースを付ける
+  some-command --token ...
+
 # 現在の shell と実行ファイルを確認
 printf '%s\n' "$SHELL"
 command -v <command>
