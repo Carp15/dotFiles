@@ -38,6 +38,7 @@ nvim --headless "+Lazy! restore" +qa # lazy-lock.json の commit へ戻す
 | `Space l R` | 参照一覧 |
 | `Space l D` | diagnostics 一覧 |
 | `Space l s` | symbol outline |
+| `x` | 1文字 / 選択範囲を削除（clipboard・レジスタに入れない。個人設定） |
 | `[ b` / `] b` | buffer を前後へ |
 
 ## 設定を変更する

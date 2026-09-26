@@ -24,6 +24,7 @@ AstroNvim 本体の version は `lua/lazy_setup.lua` の `version = "^6"` で追
 | `lua/lazy_setup.lua` | AstroNvim 本体の version・leader key・lazy.nvim options |
 | `lua/community.lua` | [astrocommunity](https://github.com/AstroNvim/astrocommunity) の pack 取り込み |
 | `lua/plugins/` | plugin の追加と上書き（`astrocore`・`astrolsp`・`astroui`・`mason`・`none-ls`・`treesitter`・`user`） |
+| `lua/plugins/mappings.lua` | 個人の key mapping（有効）。`x` を black hole register へ送り clipboard を上書きしない |
 | `lua/polish.lua` | setup 最終段で走る素の Lua |
 | `lazy-lock.json` | plugin の commit 固定。再現性のため Git 管理する |
 | `.luarc.json`、`.neoconf.json`、`.stylua.toml`、`selene.toml`、`neovim.yml` | Lua LSP・formatter・linter の設定 |
