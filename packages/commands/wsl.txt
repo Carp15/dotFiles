@@ -1,0 +1,9 @@
+# Commands required on WSL in addition to common.txt.
+# Same format as common.txt. WSL is the main backend environment, so it also
+# carries toolchains that macOS does not declare yet.
+
+rustc
+cargo
+helm
+
+# Container CLI is on hold until Podman or Docker Engine is chosen for WSL.

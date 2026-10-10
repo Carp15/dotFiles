@@ -73,6 +73,18 @@ dotfiles manager は chezmoi である。配置方式は2つだけで、どち�
 
 未管理のツールの設定を依頼された場合は、推測で追加しない。live の有無、secret、machine 依存を確認し、管理方式を決めてから取り込む。
 
+## Package management
+
+パッケージの宣言は `packages/`（Brewfile、apt.txt、winget.json、commands/）に置く。方針と保留事項は [docs/packages.md](docs/packages.md)。
+
+- `chezmoi apply` は設定ファイルの配置だけを担当する。パッケージを導入する `run_` script を置かない。
+- パッケージのインストールは、人の明示的な承認を得てから実行する。
+- bootstrap は既定で dry-run とし、導入は明示的なオプションを付けたときだけ行う。
+- `brew bundle cleanup` は実行しない。Brewfile には、導入済みでも意図的に宣言していない保留項目がある。
+- 既存パッケージの削除・移行・アップグレードは、1件ずつ個別に承認を得る。
+- 宣言ファイルを変更しても、自動でインストールしない。検証は `scripts/doctor.sh` や `brew bundle check` などの読み取り操作に限る。
+- secret や認証情報を宣言ファイルや repository に保存しない（[Safety](#safety) を参照）。
+
 ## Changes
 
 設定を変更する場合は、次の順で進める。

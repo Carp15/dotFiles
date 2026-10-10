@@ -1,0 +1,23 @@
+# WSL (Ubuntu) packages owned by apt. One package name per line; text after
+# "#" is a comment. Declaring a package here does not install it.
+#
+# Only packages whose Ubuntu LTS version is good enough belong here. Tools that
+# apt ships too old or not at all (e.g. Neovim needs 0.11+, Ubuntu 24.04 has
+# 0.9.5) are owned elsewhere; see docs/packages.md.
+#
+# To install on a new WSL machine, review this list first, then run:
+#   sed 's/#.*//' packages/wsl/apt.txt | xargs sudo apt-get install -y
+
+# Base system
+ca-certificates
+curl
+git
+zsh
+
+# Builds (mise runtimes, Neovim parsers) and archives (Mason)
+build-essential
+unzip
+
+# Everyday CLI
+ripgrep
+jq

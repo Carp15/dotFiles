@@ -1,0 +1,72 @@
+# macOS packages owned by Homebrew.
+#
+# Captured from this Mac with `brew bundle dump` on 2026-10-10 and reviewed by
+# hand. Declaring a package here does not install it: nothing in this repository
+# runs `brew bundle` automatically, and `chezmoi apply` never installs packages.
+#
+#   brew bundle check --file packages/macos/Brewfile --verbose   # read-only
+#   brew bundle list  --file packages/macos/Brewfile             # read-only
+#
+# Do not run `brew bundle cleanup` against this file: the commented-out entries
+# below are still installed on purpose. See docs/packages.md for ownership rules.
+
+# --- CLI -------------------------------------------------------------------
+
+# Dotfiles manager (chezmoi source state lives in home/)
+brew "chezmoi"
+# Repository layout under ~/ghq
+brew "ghq"
+# GitHub CLI (its auth state in ~/.config/gh is never managed here)
+brew "gh"
+# Version manager for language runtimes (Java, Node, Go, ...)
+brew "mise"
+
+# Editor and the tools AstroNvim relies on
+brew "neovim"
+brew "ripgrep"
+brew "fd"
+brew "tree-sitter-cli"
+brew "lazygit"
+
+# Containers and Kubernetes
+brew "podman"
+brew "kubernetes-cli"
+
+# Agent tooling
+brew "herdr"
+brew "hunk"
+
+# Media
+brew "ffmpeg"
+
+# --- GUI -------------------------------------------------------------------
+
+cask "android-studio"
+cask "antigravity"
+cask "cmux"
+cask "ghostty"
+cask "obsidian"
+cask "podman-desktop"
+cask "raycast"
+cask "scroll-reverser"
+cask "visual-studio-code"
+
+# --- On hold (installed, intentionally not declared yet) --------------------
+#
+# Each needs a decision before it is declared. See "保留事項" in docs/packages.md.
+#
+# Antigravity CLI: a manually placed ~/.local/bin/agy shadows the cask binary.
+# cask "antigravity-cli"
+#
+# Codex CLI: may move to the official standalone installer.
+# cask "codex"
+#
+# Codex app: cask is recorded but Codex.app is not in /Applications.
+# cask "codex-app"
+#
+# Orca: third-party tap; declaring it also declares trust in that tap.
+# tap "stablyai/orca"
+# cask "stablyai/orca/orca", trusted: true
+#
+# Not declared at all: intellij-idea (cask record without an app), and the
+# `go` entries from `brew bundle dump` (Go is owned by mise).

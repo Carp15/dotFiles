@@ -28,6 +28,7 @@ Codex や Claude Code にはまず [AGENTS.md](AGENTS.md) を読ませ、chezmoi
 ├── docs/                  # 背景、設計、運用の理解
 ├── cheatsheets/           # 日常的にすぐ参照する短い手順
 ├── config/nvim/           # symlink 方式で管理する Neovim 設定の実体
+├── packages/              # OS 別のパッケージ宣言と必須コマンド一覧（自動導入はしない）
 ├── scripts/               # 非破壊の診断、symlink 配置、導入案内
 └── local/                 # Git 管理しない machine 固有 override
 ```
@@ -45,6 +46,18 @@ Codex や Claude Code にはまず [AGENTS.md](AGENTS.md) を読ませ、chezmoi
 | chezmoi | `home/dot_config/git/ignore` | `~/.config/git/ignore` |
 | chezmoi | `home/dot_config/mise/config.toml` | `~/.config/mise/config.toml` |
 | symlink | `config/nvim/` | `~/.config/nvim` |
+
+## パッケージ管理の方針
+
+chezmoi は設定ファイルだけを扱い、`chezmoi apply` はパッケージを導入しません。パッケージは OS ごとの宣言ファイルに書き、新規環境の bootstrap で明示的に導入します。
+
+| 対象 | macOS | WSL | Windows native |
+| --- | --- | --- | --- |
+| OS パッケージ・GUI | `packages/macos/Brewfile` | `packages/wsl/apt.txt` | `packages/windows/winget.json` |
+| 開発ランタイム | mise | mise | 原則不要 |
+| 公式 installer 推奨の CLI（Claude Code 等） | 公式 installer | 公式 installer | 原則不要 |
+
+全 OS で同じ package manager を使うことは目指しません。`packages/commands/` に環境ごとの必須コマンドを宣言し、`scripts/doctor.sh` がその存在を確認します。導入経路は道具ごとに、更新のしやすさ・互換性・公式サポートで判断します。詳細と保留事項は [docs/packages.md](docs/packages.md) を参照してください。
 
 ## Secret policy
 
@@ -79,5 +92,5 @@ password、API/access/refresh token、private key、credential、cookie、sessio
 
 - `chezmoi apply` による live 反映（zsh / mise は差分レビュー待ち）
 - Linux / WSL 実機での検証と、必要になった時点での `.tmpl` 導入
-- bootstrap の自動化範囲の判断
+- bootstrap の自動化範囲の判断（パッケージ宣言と必須コマンドの検証まで完了。導入の自動化は未実装）
 - 追加候補（starship、tmux、gh の非認証設定など）の個別評価

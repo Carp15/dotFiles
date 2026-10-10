@@ -6,6 +6,7 @@
 - [chezmoi](chezmoi.md) — dotfiles manager の採用理由、source state、運用手順
 - [Shell](shell.md) — 現在の shell と今後の記録方針
 - [Git](git.md) — Git 設定と運用の記録方針
+- [Packages](packages.md) — OS 別のパッケージ宣言、必須コマンド、導入経路の方針
 - [mise](mise.md) — 現在管理するtool version宣言と再現方針
 - [Neovim](neovim.md) — AstroNvim の管理方式と symlink 運用
 - [macOS](macos.md) — 現在の主要環境

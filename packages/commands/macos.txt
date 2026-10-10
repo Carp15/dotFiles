@@ -1,0 +1,8 @@
+# Commands required on macOS in addition to common.txt.
+# Same format as common.txt.
+
+brew
+podman
+ffmpeg
+herdr
+hunk

@@ -1,0 +1,34 @@
+# Commands every Unix development environment (macOS and WSL) must provide.
+# One command per line; text after "#" is a comment. This is a contract on the
+# result, not on the installer: scripts/doctor.sh only checks that each command
+# resolves on PATH, whichever package manager put it there.
+#
+# Windows native does not read this file; see windows.txt.
+
+# Shell and dotfiles
+git
+zsh
+curl
+chezmoi
+mise
+ghq
+
+# Editor and search
+nvim
+rg
+fd
+jq
+tree-sitter
+lazygit
+
+# Runtimes (owned by mise on every platform)
+java
+node
+npm
+go
+
+# Agents and platform CLIs
+claude
+codex
+gh
+kubectl
