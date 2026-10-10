@@ -1,0 +1,20 @@
+# Line endings. Everything that runs or is read inside WSL / Linux / macOS must
+# stay LF even when the repository is checked out with core.autocrlf=true
+# (Git for Windows' default), or the scripts break with "\r: command not found".
+# Every tracked file was already LF when this was added, so nothing is rewritten.
+
+# Default: let Git detect text and store it normalized (LF) in the repository.
+* text=auto
+
+# Shell scripts and the files they read line by line.
+*.sh text eol=lf
+packages/commands/*.txt text eol=lf
+packages/wsl/apt.txt text eol=lf
+packages/macos/Brewfile text eol=lf
+
+# chezmoi source state is written into a Unix $HOME; this includes extensionless
+# files such as dot_zshrc and .chezmoitemplates/platform, and *.tmpl templates.
+home/** text eol=lf
+
+# Windows-side declarations (packages/windows/winget.json) keep text=auto:
+# winget and PowerShell read either line ending.

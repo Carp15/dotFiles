@@ -35,7 +35,7 @@ AstroNvim 本体の version は `lua/lazy_setup.lua` の `version = "^6"` で追
 
 | tool | 用途 | 現状 |
 | --- | --- | --- |
-| Neovim 0.11+ | 本体 | Homebrew の `neovim`（0.12.5） |
+| Neovim 0.11+ | 本体 | macOS: Homebrew の `neovim`（0.12.5）。WSL: mise の `aqua:neovim/neovim`（`0.12`）。Ubuntu の apt 版は 0.9.5 なので使わない |
 | git | plugin 取得 | 導入済み |
 | ripgrep | 全文検索 | Homebrew の `ripgrep`（15.2.0） |
 | fd | ファイル検索 | Homebrew の `fd` |

@@ -2,5 +2,14 @@
 #
 # This file is not a secret-management mechanism. Secrets are kept out of the
 # source state entirely; see docs/chezmoi.md. Only OS-generated noise that must
-# never be written back into $HOME belongs here.
+# never be written back into $HOME belongs here, plus targets that belong to
+# a single platform.
 .DS_Store
+{{- /*
+  WSL-only targets. The platform is decided by scripts/lib/platform.sh through
+  the "platform" template; macOS and plain Linux never receive these. The
+  directory itself is listed so that no empty conf.d/ is created elsewhere.
+*/}}
+{{ if ne (includeTemplate "platform" .) "wsl" -}}
+.config/mise/conf.d
+{{ end -}}

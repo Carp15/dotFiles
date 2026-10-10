@@ -55,6 +55,7 @@ dotfiles manager は chezmoi である。配置方式は2つだけで、どち�
 - secret を source state へ追加しない。`.chezmoiignore` は secret 対策ではない。
 - machine-specific 設定を共通設定へ直接埋め込まない。共通化・OS 依存・machine 依存・secret に分類する。
 - template (`.tmpl`) は、shell の条件分岐等で表現できない差分が出た場合に限って使う。過剰に template 化しない。
+- OS / WSL の判定は `scripts/lib/platform.sh` に一本化する。template では `{{ includeTemplate "platform" . }}` を使い、`.chezmoi.os`（WSL でも `linux`）で WSL を判定しない。template を変えたら、macOS で `chezmoi diff` が変わらないことを確認する。
 - apply の前に必ず `chezmoi diff` を確認する。必要なら `chezmoi apply --dry-run --verbose` を使う。
 - `chezmoi apply`、`chezmoi apply <path>`、`chezmoi init --apply` など live を変更する操作は自動実行しない。差分を提示し、人の承認を得る。
 - `chezmoi edit` / `chezmoi add` は repository の作業ツリーを書き換える。実行後は repository root で `git diff` を確認し、生成物を誤って commit しない。`chezmoi cd` は `home/` へ降りるので、Git 操作は一階層上で行う。
@@ -94,7 +95,7 @@ dotfiles manager は chezmoi である。配置方式は2つだけで、どち�
 3. secret / machine dependency を確認する
 4. source state を変更する
 5. `chezmoi diff` と `git diff` を確認する
-6. validation を行う
+6. validation を行う（`scripts/` や `home/` の template を変えたら `tests/run.sh`）
 7. 必要なら `docs/` / `cheatsheets/` を更新する
 
 symlink の作成は `scripts/link.sh --apply` に限る。既存の実ファイル・実ディレクトリは移動・削除せず、conflict として報告して人の判断を待つ。新しい設定を symlink 方式にするかは、日常的な編集頻度と secret / machine 依存を確認したうえで個別に判断する。既定は chezmoi 管理とする。

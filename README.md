@@ -6,12 +6,13 @@
 
 ```bash
 ./scripts/doctor.sh      # 読み取り専用の環境確認（chezmoi の状態も表示）
-./scripts/bootstrap.sh   # 新規マシン導入手順の進捗を読み取り専用で表示
+./scripts/bootstrap.sh   # パッケージ導入の計画を表示（dry-run。--apply で不足分だけ導入）
+./tests/run.sh           # 回帰テスト（stub のみ。install・network・$HOME の変更なし）
 chezmoi status           # source state と $HOME の差分がある管理対象
 chezmoi diff             # その差分の内容
 ```
 
-いずれも `$HOME` を変更しません。反映は `chezmoi diff` を読んだうえで、明示的に `chezmoi apply` を実行します。新規マシンへの導入手順は [docs/chezmoi.md](docs/chezmoi.md) にあります。
+いずれも `$HOME` を変更しません。反映は `chezmoi diff` を読んだうえで、明示的に `chezmoi apply` を実行します。パッケージの導入は `./scripts/bootstrap.sh --apply` を明示したときだけ行います。新規マシンへの導入手順は macOS が [docs/chezmoi.md](docs/chezmoi.md)、WSL が [docs/wsl.md](docs/wsl.md) です。
 
 Codex や Claude Code にはまず [AGENTS.md](AGENTS.md) を読ませ、chezmoi source state・`docs/`・`cheatsheets/` の順で確認するよう依頼してください。
 
@@ -29,7 +30,8 @@ Codex や Claude Code にはまず [AGENTS.md](AGENTS.md) を読ませ、chezmoi
 ├── cheatsheets/           # 日常的にすぐ参照する短い手順
 ├── config/nvim/           # symlink 方式で管理する Neovim 設定の実体
 ├── packages/              # OS 別のパッケージ宣言と必須コマンド一覧（自動導入はしない）
-├── scripts/               # 非破壊の診断、symlink 配置、導入案内
+├── scripts/               # 診断、symlink 配置、bootstrap（既定は dry-run）、OS 判定 (lib/platform.sh)
+├── tests/                 # platform 判定・chezmoi template・bootstrap・doctor の回帰テスト
 └── local/                 # Git 管理しない machine 固有 override
 ```
 
@@ -44,7 +46,8 @@ Codex や Claude Code にはまず [AGENTS.md](AGENTS.md) を読ませ、chezmoi
 | chezmoi | `home/dot_zshrc` | `~/.zshrc` |
 | chezmoi | `home/dot_zprofile` | `~/.zprofile` |
 | chezmoi | `home/dot_config/git/ignore` | `~/.config/git/ignore` |
-| chezmoi | `home/dot_config/mise/config.toml` | `~/.config/mise/config.toml` |
+| chezmoi (template) | `home/dot_config/mise/config.toml.tmpl` | `~/.config/mise/config.toml`（Java の vendor だけ WSL で異なる） |
+| chezmoi（WSL のみ） | `home/dot_config/mise/conf.d/wsl.toml` | `~/.config/mise/conf.d/wsl.toml` |
 | symlink | `config/nvim/` | `~/.config/nvim` |
 
 ## パッケージ管理の方針
@@ -91,6 +94,6 @@ password、API/access/refresh token、private key、credential、cookie、sessio
 ### Phase 4 — portability（進行中）
 
 - `chezmoi apply` による live 反映（zsh / mise は差分レビュー待ち）
-- Linux / WSL 実機での検証と、必要になった時点での `.tmpl` 導入
-- bootstrap の自動化範囲の判断（パッケージ宣言と必須コマンドの検証まで完了。導入の自動化は未実装）
+- WSL2 Ubuntu 対応（設定・bootstrap・doctor を実装済み。WSL 実機での検証は未実施）
+- bootstrap の自動化範囲の判断（macOS / WSL の bootstrap は実装済み。Windows native は winget.json の手動 import）
 - 追加候補（starship、tmux、gh の非認証設定など）の個別評価

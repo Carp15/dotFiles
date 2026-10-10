@@ -15,10 +15,10 @@
 
 | 対象 | macOS | WSL (Ubuntu) | Windows native |
 | --- | --- | --- | --- |
-| OS パッケージ・CLI | Homebrew（`packages/macos/Brewfile`） | apt（`packages/wsl/apt.txt`）。apt では不十分なものは個別判断 | winget（`packages/windows/winget.json`） |
+| OS パッケージ・CLI | Homebrew（`packages/macos/Brewfile`） | apt（`packages/wsl/apt.txt`）。apt では不十分な CLI は mise（`home/dot_config/mise/conf.d/wsl.toml`） | winget（`packages/windows/winget.json`） |
 | GUI アプリ | Homebrew Cask（同 Brewfile） | – | winget（同 winget.json） |
-| 開発ランタイム | mise（`home/dot_config/mise/config.toml`） | mise（同） | 原則不要（WSL 側を使う） |
-| 公式 installer 推奨の CLI | 公式 installer（Claude Code は導入済み） | 公式 installer | 原則不要 |
+| 開発ランタイム | mise（`home/dot_config/mise/config.toml.tmpl`） | mise（同。Java だけ `temurin-21`） | 原則不要（WSL 側を使う） |
+| 公式 installer 推奨の CLI | 公式 installer（Claude Code は導入済み） | 公式 installer（mise、Claude Code、Codex CLI） | 原則不要 |
 | 設定ファイル | chezmoi（`home/`）・symlink（`config/nvim/`） | 同左 | 未導入 |
 | 必須コマンドの宣言 | `packages/commands/common.txt` + `macos.txt` | `common.txt` + `wsl.txt` | `windows.txt` + winget.json |
 
@@ -44,7 +44,12 @@ packages/
 
 1行に1コマンドを書き、`#` 以降はコメントです。宣言しているのは「そのコマンドが PATH で見つかること」で、どの manager で入れたかは問いません。そのため Mac と WSL で導入経路が違っても、同じ宣言で検証できます。
 
-`scripts/doctor.sh` は OS を判定し（macOS / WSL / その他の Linux）、該当するリストのコマンドを `command -v` で探します。コマンドそのものは実行しません。必須コマンドが1つでも missing、または該当するリストのファイルが見つからない場合は exit code 1、それ以外は 0 です。その他の診断項目（tmux、Docker など）は表示だけで、exit code には影響しません。
+`scripts/doctor.sh` は OS を判定し（macOS / WSL / その他の Linux。判定は `scripts/lib/platform.sh`）、該当するリストのコマンドを `command -v` で探します。リストの確認ではコマンドを実行しません。見つからないコマンドは原因を分けて報告します。
+
+- `not installed`：どこにもない
+- `misconfigured`：mise には入っているが PATH にない（mise が有効になっていない）、または WSL で Windows の実行ファイル（`/mnt/...`）に解決された
+
+ほかに PATH（相対・空のエントリは error、重複は warn）、chezmoi の適用状態（未適用は warn）、mise の有効化と未インストールの tool、Java / Node / Go が実際に動くか、Neovim の version（0.11 以上）を確認します。error が1つでもあれば exit code 1、warn だけなら 0 です。tmux や Docker などの一覧表示は情報だけで、exit code に影響しません。読み取り専用で、自動修復はしません。
 
 ## 検証（読み取り専用）
 
@@ -88,20 +93,24 @@ Get-Content packages/commands/windows.txt |
 
 この PowerShell 手順は Windows 実機でまだ検証していません。初回の Windows セットアップ時に確認し、必要なら `scripts/` へ移します。
 
-## 導入（新規環境のみ・手動）
+## 導入（新規環境のみ）
 
-Phase 1 では導入の自動化を実装していません。新規環境で導入する場合は、宣言を読んでから明示的に実行します。
+macOS と WSL は `scripts/bootstrap.sh` で導入します。既定は dry-run で、`--apply` を付けたときだけ、不足しているものを入れます。手順は [WSL](wsl.md) と [chezmoi](chezmoi.md) を参照してください。
 
-```bash
-brew bundle install --file packages/macos/Brewfile                 # macOS
-sed 's/#.*//' packages/wsl/apt.txt | xargs sudo apt-get install -y  # WSL
-```
+| 環境 | `--apply` の順序 |
+| --- | --- |
+| macOS | Homebrew の確認（無ければ停止）→ `brew bundle install --no-upgrade` → `mise install` → Claude Code（無ければ）→ Codex CLI は担当が保留中のため案内だけ |
+| WSL (Ubuntu) | apt（不足分だけ）→ mise（公式 installer）→ `mise install` → Claude Code → Codex CLI |
+
+bootstrap は既存のコマンドを入れ直さず、アップグレードも削除もしません。`chezmoi apply` と `brew bundle cleanup` も実行しません。WSL 以外の Linux、Ubuntu 以外の WSL distribution、root での実行は exit 2 で止まります。
+
+Windows native は bootstrap の対象外です。宣言を確認してから手動で実行します。
 
 ```powershell
-winget import --import-file packages/windows/winget.json             # Windows
+winget import --import-file packages/windows/winget.json
 ```
 
-既存の Mac では実行しません。
+既存の Mac では、bootstrap の dry-run で全ステップが `ok` になることを確認済みです（2026-10-11）。
 
 ## winget ID
 
@@ -118,23 +127,35 @@ winget import --import-file packages/windows/winget.json             # Windows
 
 `JetBrains.IntelliJIDEA.Ultimate` は 2025.2.5 で更新が止まっています。IntelliJ を winget で入れる場合は `JetBrains.IntelliJIDEA` を使います。
 
-## WSL で apt 以外になる候補（未決定）
+## WSL の CLI の担当
 
-以下は `commands/common.txt` で必須としていますが、Ubuntu の apt では不十分か、apt に存在しません。導入経路は Phase 2 で、更新のしやすさ・互換性・公式サポートを基準に1つずつ決めます。
+`commands/common.txt` と `commands/wsl.txt` で必須にしているコマンドを、WSL でどこから入れるかを道具ごとに決めた結果です（2026-10-11）。基準は、公式サポート、version 要件、更新のしやすさ、再現性です。mise に統一することが目的ではありません。
 
-| Tool | apt の状況（Ubuntu 24.04） | 候補 |
+| Tool | 担当 | 理由 |
 | --- | --- | --- |
-| chezmoi | 初回の bootstrap では使えない | 公式 `get.chezmoi.io` |
-| mise | 標準の repo にない | 公式 `mise.run`、PPA `jdxcode/mise` |
-| Neovim | 0.9.5（AstroNvim v6 には 0.11 以上が必要） | 公式 release の tarball、mise |
-| fd | `fd-find`（実行ファイル名が `fdfind`） | apt + 名前の対応付け、mise |
-| gh | 古い | 公式 apt repo（cli.github.com） |
-| kubectl | ない | 公式 apt repo（pkgs.k8s.io） |
-| helm | ない | 公式 installer、mise |
-| ghq / lazygit / tree-sitter | ない | 公式 release、mise |
-| Claude Code / Codex / rustup | – | 公式 installer |
+| git、zsh、curl、ripgrep、jq、build-essential、unzip | apt | Ubuntu 24.04 の version で足り、security update が apt で届く |
+| chezmoi | 公式 installer（`get.chezmoi.io`、手動・bootstrap より前） | bootstrap の前提なので、bootstrap では入れられない。checksum を照合し、profile は変更しない。更新は `chezmoi upgrade` |
+| mise | 公式 installer（`mise.run`） | Linux での公式推奨。`mise self-update` が使え、profile は変更しない。PPA は `sudo` と apt source の追加が必要になる |
+| Java / Node / Go / npm | mise（`config.toml`） | macOS と共通の宣言。Java は WSL だけ `temurin-21`（後述） |
+| Neovim | mise（`aqua:neovim/neovim`、`0.12`） | apt は 0.9.5 で、AstroNvim v6 の要件（0.11 以上）を満たさない。公式 release を使う。registry の既定 backend は vfox なので aqua を明示している |
+| gh | mise（`aqua:cli/cli`、`2`） | 公式 release binary を使い、root 権限も apt source の追加も要らない。公式 apt repo も選択肢だが、keyring 管理が増える |
+| ghq / lazygit / tree-sitter | mise（aqua、`1` / `0.66` / `0.27`） | Ubuntu 24.04 の apt にない。公式 release binary を使う |
+| fd | mise（`aqua:sharkdp/fd`、`10`） | apt の `fd-find` は実行ファイル名が `fdfind` になる。macOS と同じ `fd` という名前を、共通の zshrc を変えずに提供できる |
+| kubectl / helm | mise（aqua、`1.37` / `4`） | apt にない。公式配布物（dl.k8s.io、get.helm.sh）を使い、version をそろえられる |
+| Rust | mise（`core:rust`、`stable`） | 内部で公式の rustup を `--no-modify-path` 付きで実行する。shell profile を変更せず、`cargo` の PATH は mise が通す |
+| Claude Code | 公式 native installer | 公式推奨。自動更新に対応し、profile は変更しない |
+| Codex CLI | 公式 installer（`chatgpt.com/codex/install.sh`） | README が mac / Linux 向けに示す方法。`~/.local/bin` が PATH にないと `~/.zshrc` に追記するため、bootstrap は PATH を通してから実行する。「Start Codex now?」の確認は `CODEX_NON_INTERACTIVE=1` で省く |
 
-公式 installer の多くは、`~/.local/bin` が PATH にないと shell profile に追記します。WSL では `chezmoi apply` で zsh 設定を配置してから installer を実行します。uv は `UV_NO_MODIFY_PATH=1`、rustup は `--no-modify-path` を付けます。
+version は prefix で宣言しています。`mise install` はその系列の最新版を入れ、既に入っている版は置き換えません。
+
+### mise 設定の読み込み順序
+
+mise は `~/.config/mise/config.toml` と `~/.config/mise/conf.d/*.toml` をどちらも global 設定として読みますが、同じツールがあると **`config.toml` が優先**されます（mise 2026.10.0 で、隔離した設定ディレクトリを使って確認）。そのため:
+
+- WSL だけのツールは `conf.d/wsl.toml` に追加する。chezmoi はこのファイルを WSL でだけ配置する（`home/.chezmoiignore`）。
+- `config.toml` にあるツールの値を WSL だけ変える場合（Java の vendor）は、conf.d では上書きできない。`config.toml.tmpl` の条件分岐で変える。macOS でレンダリングされる内容は変わらない。
+- project の `mise.toml` は global 設定より優先される（同じ方法で確認）。project 固有の version は project 側で宣言する。
+- `config.local.toml` も `config.toml` より優先されるが、machine ごとの手元用に空けておき、repository では使わない。
 
 ## 保留事項
 
@@ -148,18 +169,18 @@ winget import --import-file packages/windows/winget.json             # Windows
 | `go "golang.org/x/tools/gopls"` など | `brew bundle dump` が Go のパッケージを出力した | Go 本体は mise の担当。gopls の担当（`go install` / Mason）が未決定 |
 | Claude.app、ChatGPT、Brave、Chrome、Logi Options+ | 手動導入 | cask で管理し直すと既存 app の扱いに影響する |
 | Xcode | App Store | `mas` を導入するか未決定 |
-| WSL のコンテナ CLI | – | Podman と Docker Engine のどちらにするか未決定（`commands/wsl.txt` に未記載） |
+| WSL のコンテナ CLI | – | Podman と Docker Engine のどちらにするか未決定（`commands/wsl.txt` に未記載。Phase 2 の対象外） |
 | Windows の IntelliJ | – | `JetBrains.IntelliJIDEA` と `JetBrains.Toolbox` のどちらにするか未決定 |
 
-## 既知の問題（Phase 1 では修正しない）
+## 既知の問題（未修正）
 
 既存 macOS の挙動を変えないため、記録だけしておきます。
 
-- **Java**: mise の `java = "21"` が更新の止まった openjdk 21.0.2 に解決される。候補は `temurin-21`。
-- **npm**: mise で宣言した `npm = "11.15.0"` より、node 同梱の npm（11.17.0）が PATH で先に来る。
+- **Java**: macOS では mise の `java = "21"` が、更新の止まった openjdk 21.0.2 に解決される。WSL は Phase 2 から `temurin-21`。macOS の移行は未実施。
+- **npm**: 通常の login shell では、宣言どおり mise の `npm 11.15.0` が node 同梱の npm より先に来る（2026-10-11 に確認）。Phase 0 の棚卸しで「node 同梱の npm（11.17.0）が先に来る」としたのは、Orca が PATH の先頭に `node/24/bin` を注入した環境で調べたためで、dotfiles の問題ではなかった。node 同梱の npm を global 更新した状態が残っている点だけが未整理。
 - **Codex**: brew cask で導入。公式 standalone installer との経路の違い。
 - **Antigravity CLI**: 手動配置の binary と cask の二重導入。
 - **IntelliJ**: 壊れた cask の記録。
-- **PATH**: 起動元アプリ（Orca）経由の環境に、存在しない path や相対 path が入る。login shell 自体の PATH は正常。
+- **PATH**: 起動元アプリ（Orca）経由の環境に、存在しない path、相対 path、`node/24/bin` が先頭に入る。login shell 自体の PATH は正常。`scripts/doctor.sh` はこの環境で実行すると、相対 path を error として exit 1 を返す。
 - **mise**: どの設定からも参照されていない古い version が残っている（`mise prune --dry-run` で確認できる）。
 - **手動 binary**: `~/.local/bin/omp`、`/usr/local/bin/apm`、`/usr/local/bin/docker-compose` は、どの manager の管理下にもない。

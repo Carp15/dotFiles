@@ -1,0 +1,11 @@
+{{- /*
+  Prints macos | wsl | linux | windows. The rule itself lives in
+  scripts/lib/platform.sh so that chezmoi and the shell scripts cannot drift;
+  this template only calls it. Windows native has no POSIX sh, so it is
+  answered here without calling the script.
+*/ -}}
+{{- if eq .chezmoi.os "windows" -}}
+windows
+{{- else -}}
+{{- output "sh" "-c" ". \"$1\" && dotfiles_platform" "sh" (joinPath .chezmoi.workingTree "scripts/lib/platform.sh") | trim -}}
+{{- end -}}

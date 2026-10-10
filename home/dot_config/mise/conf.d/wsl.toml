@@ -1,0 +1,26 @@
+# WSL-only CLI tools owned by mise. chezmoi deploys this file only on WSL (see
+# home/.chezmoiignore); macOS provides the same commands through Homebrew
+# (packages/macos/Brewfile).
+#
+# Ubuntu's apt ships these too old or not at all, and each project publishes
+# official release binaries that mise's aqua backend downloads and verifies.
+# Versions are prefixes: `mise install` picks the newest release in that line
+# and never replaces a version that is already installed.
+#
+# mise reads conf.d/*.toml together with config.toml, but config.toml wins on
+# conflicts, so only add tools here that config.toml does not declare.
+
+[tools]
+# AstroNvim v6 needs Neovim 0.11+; Ubuntu 24.04 apt has 0.9.5. Pinned to the
+# aqua backend (official GitHub release) instead of the registry default.
+"aqua:neovim/neovim" = "0.12"
+gh = "2"
+ghq = "1"
+lazygit = "0.66"
+# The official binary name is fd; Ubuntu's apt package installs it as fdfind.
+fd = "10"
+tree-sitter = "0.27"
+kubectl = "1.37"
+helm = "4"
+# Toolchains via rustup (mise runs rustup-init with --no-modify-path).
+rust = "stable"

@@ -80,11 +80,21 @@ machine 依存値は、次の順で「共通化 → OS 依存 → machine 依存
 | 分類 | 扱い | 現在の例 |
 | --- | --- | --- |
 | 共通化可能 | source state にそのまま置く | `~/.local/bin` の PATH 追加、mise activation、alias、mise の tool 宣言、Git global ignore |
-| OS 依存 | shell 側の存在チェック、または chezmoi template (`.tmpl` + `.chezmoi.os`) | Homebrew prefix（Apple Silicon `/opt/homebrew` と Intel `/usr/local` を `-x` で判定） |
+| OS 依存 | shell 側の存在チェック、または chezmoi template（`.tmpl` + `platform` template） | Homebrew prefix（Apple Silicon `/opt/homebrew` と Intel `/usr/local` を `-x` で判定） |
 | machine 依存 | HOME 側の設定ファイル、または `local/` 配下の非機密 override | chezmoi の `sourceDir`、Git identity |
 | secret | source state に入れない | Git credential helper が扱う認証情報 |
 
-現時点で `.tmpl` ファイルは1つもありません。取り込んだ設定に username、絶対 home path、hostname、OS 固有 path が残っていないためです。OS 差分は shell の存在チェックで済んでおり、これを template 化すると同じ条件分岐を二重に持つことになります。`.tmpl` は、shell の条件分岐では表現できない差分（設定ファイル形式が条件分岐を持たない場合など）が出た時点で導入します。
+`.tmpl` は、shell の条件分岐では表現できない差分（設定ファイル形式が条件分岐を持たない場合など）がある場合に限って使います。shell 設定の OS 差分は存在チェックで済むため、zshrc / zprofile は template にしていません。
+
+現在 template を使っているのは次の3か所で、いずれも WSL 対応のためです。
+
+| ファイル | 用途 |
+| --- | --- |
+| `home/.chezmoitemplates/platform` | `macos` / `wsl` / `linux` / `windows` を返す named template。判定ロジックは持たず、`scripts/lib/platform.sh` を呼ぶ |
+| `home/.chezmoiignore` | WSL 以外では `~/.config/mise/conf.d` を target state から外す（`.chezmoiignore` は常に template として評価される） |
+| `home/dot_config/mise/config.toml.tmpl` | Java の vendor を WSL だけ `temurin-21` にする。TOML は条件分岐を書けず、conf.d から `config.toml` の値は上書きできないため |
+
+`.chezmoi.os` は WSL でも `linux` を返すため、WSL の判定には使いません。判定は `scripts/lib/platform.sh` の1か所にまとめ、chezmoi と shell script がずれないようにしています（詳細は [WSL](wsl.md)）。template を変えたら、macOS で `chezmoi diff` が空のままであることと、`chezmoi cat ~/.config/mise/config.toml` が live と一致することを確認します。
 
 ## Secret の扱い
 
@@ -124,7 +134,16 @@ chezmoi diff
 chezmoi apply
 ```
 
-`scripts/bootstrap.sh` はこの手順のどこまで進んでいるかを読み取り専用で表示します。自動 apply はしません。既存の dotfiles がある新規マシンでは、必ず 5 で差分を読んでから 6 に進みます。
+既存の dotfiles がある新規マシンでは、必ず 5 で差分を読んでから 6 に進みます。macOS では、この手順の前に Homebrew を公式 installer（https://brew.sh）で入れておきます。
+
+apply の後、パッケージは bootstrap で入れます。
+
+```bash
+./scripts/bootstrap.sh            # dry-run: 状態と実行予定のコマンドを表示する
+./scripts/bootstrap.sh --apply    # 不足しているものだけを導入する
+```
+
+bootstrap は chezmoi の状態も確認し、未適用なら mise のツールと公式 installer を `blocked` にします。`chezmoi apply` 自体は実行しません。WSL の手順は [WSL](wsl.md) にまとめています。
 
 ## Neovim だけ symlink 方式のままにしている理由
 
