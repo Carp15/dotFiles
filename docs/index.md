@@ -12,6 +12,7 @@
 - [macOS](macos.md) — 現在の主要環境
 - [Linux](linux.md) — Linux での差分方針
 - [WSL](wsl.md) — WSL2 Ubuntu の構築手順と macOS との差分
+- [Windows](windows.md) — Windows 11 native（PowerShell 7、Windows Terminal、winget）の構築手順、WSL との分担、Android Studio / IntelliJ の調査、実機検証手順
 - [Troubleshooting](troubleshooting.md) — 安全な初動確認
 
 CLI tool ごとの設定や前提条件は、実際に管理対象へ追加する時点で、必要な範囲だけこのディレクトリへ追記します。

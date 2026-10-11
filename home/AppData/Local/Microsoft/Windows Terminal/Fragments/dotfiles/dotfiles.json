@@ -1,0 +1,9 @@
+{
+  "profiles": [
+    {
+      "guid": "{980ea41d-f304-5abc-b385-410d92e4a9c1}",
+      "name": "WSL (home)",
+      "commandline": "wsl.exe --cd ~"
+    }
+  ]
+}

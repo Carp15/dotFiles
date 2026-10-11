@@ -13,7 +13,7 @@
         { "PackageIdentifier": "Microsoft.PowerShell" },
         { "PackageIdentifier": "Microsoft.WindowsTerminal" },
         { "PackageIdentifier": "Git.Git" },
-        { "PackageIdentifier": "Google.AndroidStudio" }
+        { "PackageIdentifier": "twpayne.chezmoi" }
       ]
     }
   ]

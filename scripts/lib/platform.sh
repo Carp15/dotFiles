@@ -1,4 +1,5 @@
-# Platform detection: the single source of truth for "macos / wsl / linux".
+# Platform detection: the single source of truth for "macos / wsl / linux /
+# windows".
 #
 # Sourced by scripts/doctor.sh and scripts/bootstrap.sh, and called by chezmoi
 # through home/.chezmoitemplates/platform, so every consumer agrees on what a
@@ -11,13 +12,19 @@
 # WSL_DISTRO_NAME (set by wsl.exe) covers WSL2 with a custom kernel whose
 # release string does not mention Microsoft.
 #
+# Windows native has no POSIX sh of its own. When Git Bash (MSYS2) or Cygwin
+# runs this file, uname reports MINGW64_NT-... / MSYS_NT-... / CYGWIN_NT-...,
+# which is Windows native, not WSL: the bash scripts then point to the
+# PowerShell ones. PowerShell (scripts/lib/windows.ps1) and the chezmoi
+# template answer "windows" themselves and call this file only off Windows.
+#
 # Test hooks (read-only): DOTFILES_OSRELEASE_FILE, DOTFILES_OS_RELEASE_FILE.
 
 dotfiles_kernel_release() {
   cat "${DOTFILES_OSRELEASE_FILE:-/proc/sys/kernel/osrelease}" 2>/dev/null
 }
 
-# Prints macos | wsl | linux | unknown.
+# Prints macos | wsl | linux | windows | unknown.
 dotfiles_platform() {
   case "$(uname -s 2>/dev/null)" in
     Darwin)
@@ -34,6 +41,9 @@ dotfiles_platform() {
           fi
           ;;
       esac
+      ;;
+    MINGW* | MSYS* | CYGWIN*)
+      echo windows
       ;;
     *)
       echo unknown

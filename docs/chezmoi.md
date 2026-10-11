@@ -23,9 +23,12 @@ dotFiles/                     <- Git repository root / chezmoi working tree
 │   ├── .chezmoiignore
 │   ├── dot_zshrc             -> ~/.zshrc
 │   ├── dot_zprofile          -> ~/.zprofile
-│   └── dot_config/
-│       ├── git/ignore        -> ~/.config/git/ignore
-│       └── mise/config.toml  -> ~/.config/mise/config.toml
+│   ├── dot_config/
+│   │   ├── git/ignore        -> ~/.config/git/ignore
+│   │   ├── mise/config.toml  -> ~/.config/mise/config.toml（Windows 以外）
+│   │   └── powershell/dotfiles.ps1  -> ~/.config/powershell/dotfiles.ps1（Windows のみ）
+│   ├── Documents/PowerShell/create_Microsoft.PowerShell_profile.ps1  -> $PROFILE（Windows のみ、なければ作る）
+│   └── AppData/Local/Microsoft/Windows Terminal/Fragments/dotfiles/dotfiles.json（Windows のみ）
 ├── AGENTS.md, docs/, cheatsheets/, scripts/   <- ナレッジ層（apply されない）
 ├── config/nvim/              <- symlink 方式のまま（後述）
 └── local/                    <- Git 管理しない machine 固有 override
@@ -60,6 +63,10 @@ chezmoi cd                          # source directory (home/) へ移動
 
 `chezmoi add` は live の内容をそのまま source state へ複製します。取り込む前に内容と構造を確認し、secret と machine 依存値がないことを確かめます。live に machine 固有値が含まれている場合は、`chezmoi add` したあとに source state 側を可搬な形へ直し、`chezmoi diff` で HOME への影響を確認します。
 
+### 既存ファイルの上書きについて
+
+chezmoi は、一度も管理していない既存ファイルでも、初回の `chezmoi apply` で確認なしに上書きします（2.73.0 で確認。`chezmoi status` では通常の変更と同じ ` M` に見える）。そのため apply 前の `chezmoi diff` が唯一の確認になります。利用者が自分で育てている可能性が高いファイル（Windows の `$PROFILE`）は、`create_` 属性（存在しないときだけ作る）で1行の loader だけを置き、中身は dotfiles 専用の別ファイルにしています（[Windows](windows.md#既存の設定を上書きしない仕組み)）。
+
 ### apply するとき
 
 apply は HOME を書き換える唯一の操作です。次の順で行います。
@@ -81,24 +88,24 @@ machine 依存値は、次の順で「共通化 → OS 依存 → machine 依存
 | --- | --- | --- |
 | 共通化可能 | source state にそのまま置く | `~/.local/bin` の PATH 追加、mise activation、alias、mise の tool 宣言、Git global ignore |
 | OS 依存 | shell 側の存在チェック、または chezmoi template（`.tmpl` + `platform` template） | Homebrew prefix（Apple Silicon `/opt/homebrew` と Intel `/usr/local` を `-x` で判定） |
-| machine 依存 | HOME 側の設定ファイル、または `local/` 配下の非機密 override | chezmoi の `sourceDir`、Git identity |
+| machine 依存 | HOME 側の設定ファイル、または `local/` 配下の非機密 override | chezmoi の `sourceDir`、Git identity、Windows で Documents がリダイレクトされた machine の `[data] skipPowerShellProfile = true`（[Windows](windows.md)） |
 | secret | source state に入れない | Git credential helper が扱う認証情報 |
 
 `.tmpl` は、shell の条件分岐では表現できない差分（設定ファイル形式が条件分岐を持たない場合など）がある場合に限って使います。shell 設定の OS 差分は存在チェックで済むため、zshrc / zprofile は template にしていません。
 
-現在 template を使っているのは次の3か所で、いずれも WSL 対応のためです。
+現在 template を使っているのは次の3か所で、WSL と Windows native への対応のためです。
 
 | ファイル | 用途 |
 | --- | --- |
 | `home/.chezmoitemplates/platform` | `macos` / `wsl` / `linux` / `windows` を返す named template。判定ロジックは持たず、`scripts/lib/platform.sh` を呼ぶ |
-| `home/.chezmoiignore` | WSL 以外では `~/.config/mise/conf.d` を target state から外す（`.chezmoiignore` は常に template として評価される） |
+| `home/.chezmoiignore` | WSL 以外では `~/.config/mise/conf.d` を、Windows では zsh と mise を、Windows 以外では PowerShell と Windows Terminal の target を外す（`.chezmoiignore` は常に template として評価される） |
 | `home/dot_config/mise/config.toml.tmpl` | Java の vendor を WSL だけ `temurin-21` にする。TOML は条件分岐を書けず、conf.d から `config.toml` の値は上書きできないため |
 
-`.chezmoi.os` は WSL でも `linux` を返すため、WSL の判定には使いません。判定は `scripts/lib/platform.sh` の1か所にまとめ、chezmoi と shell script がずれないようにしています（詳細は [WSL](wsl.md)）。template を変えたら、macOS で `chezmoi diff` が空のままであることと、`chezmoi cat ~/.config/mise/config.toml` が live と一致することを確認します。
+`.chezmoi.os` は WSL でも `linux` を返すため、WSL の判定には使いません（`windows` を返すのは Windows native だけなので、`platform` template は Windows の判定にだけ使います。[Windows](windows.md#判定)）。判定は `scripts/lib/platform.sh` の1か所にまとめ、chezmoi と shell script がずれないようにしています（詳細は [WSL](wsl.md)）。template を変えたら、macOS で `chezmoi diff` が空のままであることと、`chezmoi cat ~/.config/mise/config.toml` が live と一致することを確認します。
 
 ## Secret の扱い
 
-secret は原則として source state へ入れません。`.chezmoiignore` は target state から除外するだけで、source state に置いたファイルは Git に入るため、secret 対策にはなりません。現在の `.chezmoiignore` は `.DS_Store` のみを対象にしています。
+secret は原則として source state へ入れません。`.chezmoiignore` は target state から除外するだけで、source state に置いたファイルは Git に入るため、secret 対策にはなりません。現在の `.chezmoiignore` が除外しているのは `.DS_Store` と、OS ごとの target だけです。
 
 今回管理対象にしなかったもの。
 
@@ -143,7 +150,7 @@ apply の後、パッケージは bootstrap で入れます。
 ./scripts/bootstrap.sh --apply    # 不足しているものだけを導入する
 ```
 
-bootstrap は chezmoi の状態も確認し、未適用なら mise のツールと公式 installer を `blocked` にします。`chezmoi apply` 自体は実行しません。WSL の手順は [WSL](wsl.md) にまとめています。
+bootstrap は chezmoi の状態も確認し、未適用なら mise のツールと公式 installer を `blocked` にします。`chezmoi apply` 自体は実行しません。WSL の手順は [WSL](wsl.md)、Windows native の手順（`sourceDir` の書き方を含む）は [Windows](windows.md) にまとめています。
 
 ## Neovim だけ symlink 方式のままにしている理由
 

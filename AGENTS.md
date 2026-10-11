@@ -55,7 +55,7 @@ dotfiles manager は chezmoi である。配置方式は2つだけで、どち�
 - secret を source state へ追加しない。`.chezmoiignore` は secret 対策ではない。
 - machine-specific 設定を共通設定へ直接埋め込まない。共通化・OS 依存・machine 依存・secret に分類する。
 - template (`.tmpl`) は、shell の条件分岐等で表現できない差分が出た場合に限って使う。過剰に template 化しない。
-- OS / WSL の判定は `scripts/lib/platform.sh` に一本化する。template では `{{ includeTemplate "platform" . }}` を使い、`.chezmoi.os`（WSL でも `linux`）で WSL を判定しない。template を変えたら、macOS で `chezmoi diff` が変わらないことを確認する。
+- OS / WSL の判定は `scripts/lib/platform.sh` に一本化する。template では `{{ includeTemplate "platform" . }}` を使い、`.chezmoi.os`（WSL でも `linux`）で WSL を判定しない。Windows native だけは sh がないため、`platform` template と `scripts/lib/windows.ps1` が自分で `windows` と答える。template を変えたら、macOS で `chezmoi diff` が変わらないことを確認する。
 - apply の前に必ず `chezmoi diff` を確認する。必要なら `chezmoi apply --dry-run --verbose` を使う。
 - `chezmoi apply`、`chezmoi apply <path>`、`chezmoi init --apply` など live を変更する操作は自動実行しない。差分を提示し、人の承認を得る。
 - `chezmoi edit` / `chezmoi add` は repository の作業ツリーを書き換える。実行後は repository root で `git diff` を確認し、生成物を誤って commit しない。`chezmoi cd` は `home/` へ降りるので、Git 操作は一階層上で行う。
@@ -71,19 +71,23 @@ dotfiles manager は chezmoi である。配置方式は2つだけで、どち�
 | tool version を変えて | `home/dot_config/mise/config.toml` |
 | Neovim 設定を変えて | `config/nvim/`（symlink 方式なので live 側もそのまま変わる） |
 | tmux の alias を追加して | tmux は未インストール・未管理。まず管理方式を確認し、alias だけなら `home/dot_zshrc` |
+| PowerShell の設定・関数を変えて（Windows） | `home/dot_config/powershell/dotfiles.ps1`。`$PROFILE` 本体（`create_` の loader）は既存ファイルを守るため変更しない |
+| Windows Terminal の設定を変えて | profile / color scheme の追加なら fragment（`home/AppData/Local/Microsoft/Windows Terminal/Fragments/dotfiles/dotfiles.json`）。`settings.json` は管理対象外 |
 
 未管理のツールの設定を依頼された場合は、推測で追加しない。live の有無、secret、machine 依存を確認し、管理方式を決めてから取り込む。
 
 ## Package management
 
-パッケージの宣言は `packages/`（Brewfile、apt.txt、winget.json、commands/）に置く。方針と保留事項は [docs/packages.md](docs/packages.md)。
+パッケージの宣言は `packages/`（Brewfile、apt.txt、winget.json、commands/）に置く。方針と保留事項は [docs/packages.md](docs/packages.md)、Windows native は [docs/windows.md](docs/windows.md)。
 
 - `chezmoi apply` は設定ファイルの配置だけを担当する。パッケージを導入する `run_` script を置かない。
 - パッケージのインストールは、人の明示的な承認を得てから実行する。
 - bootstrap は既定で dry-run とし、導入は明示的なオプションを付けたときだけ行う。
 - `brew bundle cleanup` は実行しない。Brewfile には、導入済みでも意図的に宣言していない保留項目がある。
 - 既存パッケージの削除・移行・アップグレードは、1件ずつ個別に承認を得る。
-- 宣言ファイルを変更しても、自動でインストールしない。検証は `scripts/doctor.sh` や `brew bundle check` などの読み取り操作に限る。
+- 宣言ファイルを変更しても、自動でインストールしない。検証は `scripts/doctor.sh`、`scripts/doctor.ps1`、`brew bundle check` などの読み取り操作に限る。
+- winget の規約への同意（`--accept-package-agreements`、`--accept-source-agreements`）を自動化しない。Windows 実機での `bootstrap.ps1 --apply`、`chezmoi apply` は人が実行する。
+- Windows の任意の開発ツール（Android Studio など）は基本環境の `winget.json` に入れず、`packages/windows/winget-<group>.json` と `packages/commands/windows-<group>.txt` に分ける（`--with <group>` で選んだときだけ導入・必須）。
 - secret や認証情報を宣言ファイルや repository に保存しない（[Safety](#safety) を参照）。
 
 ## Changes
@@ -95,7 +99,7 @@ dotfiles manager は chezmoi である。配置方式は2つだけで、どち�
 3. secret / machine dependency を確認する
 4. source state を変更する
 5. `chezmoi diff` と `git diff` を確認する
-6. validation を行う（`scripts/` や `home/` の template を変えたら `tests/run.sh`）
+6. validation を行う（`scripts/` や `home/` の template を変えたら `tests/run.sh`。`*.ps1` を変えたら pwsh がある環境で実行し、無ければ SKIP されたことを報告する）
 7. 必要なら `docs/` / `cheatsheets/` を更新する
 
 symlink の作成は `scripts/link.sh --apply` に限る。既存の実ファイル・実ディレクトリは移動・削除せず、conflict として報告して人の判断を待つ。新しい設定を symlink 方式にするかは、日常的な編集頻度と secret / machine 依存を確認したうえで個別に判断する。既定は chezmoi 管理とする。

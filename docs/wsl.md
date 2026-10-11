@@ -157,4 +157,4 @@ appendWindowsPath = false
 
 ## 管理しないもの
 
-Windows 側の path、interop、terminal の設定、credential bridge は machine 固有になりやすいため、共通設定に入れません。secret や Windows の credential も複製しません。
+Windows 側の path、interop、credential bridge は machine 固有になりやすいため、共通設定に入れません。secret や Windows の credential も複製しません。Windows native 側（PowerShell profile、Windows Terminal の fragment、winget）は [Windows](windows.md) で別に管理します。

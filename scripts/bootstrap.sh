@@ -30,7 +30,8 @@ usage() {
   printf '%s\n' "  (no option)  dry run: show each step's state and the commands --apply would run"
   printf '%s\n' "  --apply      install what is missing; logs to $state_dir"
   printf '%s\n' ""
-  printf '%s\n' "Supported: macOS, and Ubuntu on WSL. Other platforms exit with status 2."
+  printf '%s\n' "Supported: macOS, and Ubuntu on WSL. Other platforms exit with status 2;"
+  printf '%s\n' "Windows native uses scripts/bootstrap.ps1 (docs/windows.md)."
 }
 
 case "${1:-}" in
@@ -87,6 +88,10 @@ case "$platform" in
       printf '%s\n' "  warning: WSL1 detected. WSL2 is the supported target; continuing."
     fi
     steps="apt mise mise_tools claude codex"
+    ;;
+  windows)
+    printf '%s\n' "Windows native: run scripts/bootstrap.ps1 from PowerShell instead (docs/windows.md). Nothing was changed."
+    exit 2
     ;;
   *)
     printf '%s\n' "Unsupported platform: $platform (only macOS and WSL are supported). Nothing was changed."

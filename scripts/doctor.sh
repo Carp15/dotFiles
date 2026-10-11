@@ -128,6 +128,9 @@ case "$platform" in
   linux)
     report_warn "Platform" "Linux outside WSL is not a supported target; only common.txt is checked"
     ;;
+  windows)
+    report_warn "Platform" "Windows native (Git Bash): run scripts/doctor.ps1 from PowerShell instead"
+    ;;
 esac
 
 section "PATH"
@@ -304,7 +307,7 @@ case "$platform" in
     check_commands "$commands_dir/common.txt"
     ;;
   *)
-    printf '%s\n' "No command list for this platform (Windows native is checked from PowerShell; see docs/packages.md)."
+    printf '%s\n' "No command list for this platform (Windows native is checked by scripts/doctor.ps1; see docs/windows.md)."
     ;;
 esac
 printf '%-12s %s declared\n' "Declared" "$list_total"

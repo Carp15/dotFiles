@@ -3,11 +3,15 @@
 # Windows native is the GUI host; development runtimes live in WSL, so this
 # file does not include common.txt. GUI applications have no command to look
 # up and are verified by winget package ID instead (packages/windows/winget.json).
-# Both checks are described in docs/packages.md.
+# Both checks are done by scripts/doctor.ps1 (docs/windows.md).
+#
+# This is the base environment only. Optional development tools have their own
+# lists (windows-<group>.txt, e.g. windows-android.txt), checked as required
+# only with `doctor.ps1 --with <group>`.
 
 pwsh
 wt
+winget
 git
+chezmoi
 wsl
-# Provided by the Android SDK platform-tools once they are added to PATH
-adb

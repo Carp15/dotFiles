@@ -1,0 +1,7 @@
+# Commands required for Android development on Windows native. Optional:
+# scripts/doctor.ps1 checks this list as required only with --with android,
+# and otherwise reports it as information. Same format as common.txt.
+# Packages for the group are in packages/windows/winget-android.json.
+
+# Provided by the Android SDK platform-tools once they are added to PATH
+adb

@@ -5,11 +5,38 @@
 # never be written back into $HOME belongs here, plus targets that belong to
 # a single platform.
 .DS_Store
+{{- $platform := includeTemplate "platform" . }}
 {{- /*
   WSL-only targets. The platform is decided by scripts/lib/platform.sh through
   the "platform" template; macOS and plain Linux never receive these. The
   directory itself is listed so that no empty conf.d/ is created elsewhere.
 */}}
-{{ if ne (includeTemplate "platform" .) "wsl" -}}
+{{ if ne $platform "wsl" -}}
 .config/mise/conf.d
+{{ end -}}
+{{- /*
+  Windows native is the GUI host (docs/windows.md): no zsh and no mise there,
+  so it receives only the shared Git ignore plus its own targets below.
+  Everywhere else the Windows targets are excluded; the top-level directories
+  are listed so that no empty Documents/ or AppData/ is created on WSL.
+*/}}
+{{ if eq $platform "windows" -}}
+.zshrc
+.zprofile
+.config/mise
+{{- /*
+  The $PROFILE loader under ~/Documents is only right when Documents is not
+  redirected (OneDrive). A machine where PowerShell 7 reads its profile from
+  elsewhere opts out in its own ~/.config/chezmoi/chezmoi.toml:
+    [data]
+    skipPowerShellProfile = true
+  and loads ~/.config/powershell/dotfiles.ps1 by hand (docs/windows.md).
+*/}}
+{{ if and (hasKey . "skipPowerShellProfile") .skipPowerShellProfile -}}
+Documents
+{{ end -}}
+{{ else -}}
+.config/powershell
+AppData
+Documents
 {{ end -}}

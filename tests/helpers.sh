@@ -97,4 +97,5 @@ make_fixtures() {
   fake_uname "$TEST_TMP/uname-linux" Linux
   fake_uname "$TEST_TMP/uname-darwin" Darwin
   fake_uname "$TEST_TMP/uname-bsd" FreeBSD
+  fake_uname "$TEST_TMP/uname-mingw" MINGW64_NT-10.0-26100
 }

@@ -15,14 +15,14 @@
 
 | 対象 | macOS | WSL (Ubuntu) | Windows native |
 | --- | --- | --- | --- |
-| OS パッケージ・CLI | Homebrew（`packages/macos/Brewfile`） | apt（`packages/wsl/apt.txt`）。apt では不十分な CLI は mise（`home/dot_config/mise/conf.d/wsl.toml`） | winget（`packages/windows/winget.json`） |
+| OS パッケージ・CLI | Homebrew（`packages/macos/Brewfile`） | apt（`packages/wsl/apt.txt`）。apt では不十分な CLI は mise（`home/dot_config/mise/conf.d/wsl.toml`） | winget（基本環境は `packages/windows/winget.json`、任意のツールは `winget-<group>.json`） |
 | GUI アプリ | Homebrew Cask（同 Brewfile） | – | winget（同 winget.json） |
 | 開発ランタイム | mise（`home/dot_config/mise/config.toml.tmpl`） | mise（同。Java だけ `temurin-21`） | 原則不要（WSL 側を使う） |
 | 公式 installer 推奨の CLI | 公式 installer（Claude Code は導入済み） | 公式 installer（mise、Claude Code、Codex CLI） | 原則不要 |
-| 設定ファイル | chezmoi（`home/`）・symlink（`config/nvim/`） | 同左 | 未導入 |
-| 必須コマンドの宣言 | `packages/commands/common.txt` + `macos.txt` | `common.txt` + `wsl.txt` | `windows.txt` + winget.json |
+| 設定ファイル | chezmoi（`home/`）・symlink（`config/nvim/`） | 同左 | chezmoi（Git ignore、PowerShell profile、Windows Terminal fragment。[Windows](windows.md)） |
+| 必須コマンドの宣言 | `packages/commands/common.txt` + `macos.txt` | `common.txt` + `wsl.txt` | `windows.txt` + winget.json（任意のグループは `windows-<group>.txt` + `winget-<group>.json`。`--with <group>` のときだけ必須） |
 
-Windows では、WSL がバックエンド開発の環境、Windows native が GUI のホスト（PowerShell 7、Windows Terminal、IntelliJ、Android Studio、Android SDK、adb）という分担です。Spring Boot / Kotlin は Windows の IntelliJ から WSL 上の project と JDK・Gradle・Git を使います。Android 開発は Windows native で行います。Java・Node・Go は Windows native に入れません（Android Studio は Gradle 用の JBR を同梱しています）。
+Windows では、WSL がバックエンド開発の環境、Windows native が GUI のホスト（PowerShell 7、Windows Terminal、IntelliJ、Android Studio、Android SDK、adb）という分担です（詳細は [Windows](windows.md)）。Spring Boot / Kotlin は Windows の IntelliJ から WSL 上の project と JDK・Gradle・Git を使います。Android 開発は Windows native で行います。Java・Node・Go は Windows native に入れません（Android Studio は Gradle 用の JBR を同梱しています）。
 
 ## ファイル
 
@@ -32,10 +32,13 @@ packages/
 │   ├── common.txt     # macOS と WSL の両方で必須のコマンド
 │   ├── macos.txt      # macOS だけで必須のコマンド
 │   ├── wsl.txt        # WSL だけで必須のコマンド
-│   └── windows.txt    # Windows native で必須の CLI（common.txt は読まない）
+│   ├── windows.txt    # Windows native の基本環境で必須の CLI（common.txt は読まない）
+│   └── windows-android.txt  # 任意：Android 開発で必須の CLI（adb）。--with android のときだけ必須
 ├── macos/Brewfile     # Homebrew formula / cask の宣言
 ├── wsl/apt.txt        # apt パッケージの宣言（1行1パッケージ）
-└── windows/winget.json  # winget import 形式の宣言
+└── windows/
+    ├── winget.json          # winget import 形式。Windows native の基本環境
+    └── winget-android.json  # 任意：Android Studio。bootstrap.ps1 --with android のときだけ導入
 ```
 
 `packages/` は `home/` の外にあるので、chezmoi の target state には入りません。
@@ -72,43 +75,25 @@ sed 's/#.*//' packages/wsl/apt.txt | xargs dpkg-query -W -f='${Package} ${Status
 
 ### Windows native（PowerShell）
 
-Windows native には bash の doctor がないため、CLI と GUI アプリを別の方法で確認します。GUI アプリは PATH 上のコマンドを持たないので、winget の package ID で導入済みかを確認します。
-
 ```powershell
-# CLI: packages/commands/windows.txt
-Get-Content packages/commands/windows.txt |
-  ForEach-Object { ($_ -replace '#.*', '').Trim() } | Where-Object { $_ } |
-  ForEach-Object {
-    $c = Get-Command $_ -ErrorAction SilentlyContinue
-    '{0,-12} {1}' -f $_, $(if ($c) { $c.Source } else { 'missing' })
-  }
-
-# GUI / package: packages/windows/winget.json
-(Get-Content packages/windows/winget.json -Raw | ConvertFrom-Json).Sources.Packages.PackageIdentifier |
-  ForEach-Object {
-    winget list --id $_ --exact --accept-source-agreements | Out-Null
-    '{0,-28} {1}' -f $_, $(if ($LASTEXITCODE -eq 0) { 'installed' } else { 'missing' })
-  }
+pwsh -File scripts\doctor.ps1
 ```
 
-この PowerShell 手順は Windows 実機でまだ検証していません。初回の Windows セットアップ時に確認し、必要なら `scripts/` へ移します。
+`scripts/doctor.ps1` が、`packages/commands/windows.txt` のコマンドを PATH で探し（実行はしない）、GUI アプリなど PATH 上のコマンドを持たないものは `packages/windows/winget.json` の package ID で `winget list` により確認します。任意のグループ（`windows-<group>.txt`、`winget-<group>.json`）は情報として表示するだけで、`--with <group>` を付けたときだけ必須（error の対象）になります。Android SDK がない Windows でも、基本環境が揃っていれば 0 error です。ほかに PowerShell 7 の version、chezmoi の状態と Windows / WSL の target 分離、`$PROFILE`、Windows Terminal の fragment を確認します。報告の形式と exit code は `doctor.sh` と同じです。Windows 実機では未検証です（[Windows](windows.md#未検証事項)）。
 
 ## 導入（新規環境のみ）
 
-macOS と WSL は `scripts/bootstrap.sh` で導入します。既定は dry-run で、`--apply` を付けたときだけ、不足しているものを入れます。手順は [WSL](wsl.md) と [chezmoi](chezmoi.md) を参照してください。
+macOS と WSL は `scripts/bootstrap.sh`、Windows native は `scripts/bootstrap.ps1` で導入します。どちらも既定は dry-run で、`--apply` を付けたときだけ、不足しているものを入れます。手順は [WSL](wsl.md)、[Windows](windows.md)、[chezmoi](chezmoi.md) を参照してください。
 
 | 環境 | `--apply` の順序 |
 | --- | --- |
 | macOS | Homebrew の確認（無ければ停止）→ `brew bundle install --no-upgrade` → `mise install` → Claude Code（無ければ）→ Codex CLI は担当が保留中のため案内だけ |
 | WSL (Ubuntu) | apt（不足分だけ）→ mise（公式 installer）→ `mise install` → Claude Code → Codex CLI |
+| Windows native | `winget.json` の順に、未導入のものだけ `winget install --id <ID> --exact --source winget --no-upgrade`（PowerShell 7 → Windows Terminal → Git → chezmoi）。`--with android` を付けたときだけ、続けて Android Studio。規約への同意は自動化しない |
 
-bootstrap は既存のコマンドを入れ直さず、アップグレードも削除もしません。`chezmoi apply` と `brew bundle cleanup` も実行しません。WSL 以外の Linux、Ubuntu 以外の WSL distribution、root での実行は exit 2 で止まります。
+bootstrap は既存のコマンドを入れ直さず、アップグレードも削除もしません。`chezmoi apply` と `brew bundle cleanup` も実行しません。WSL 以外の Linux、Ubuntu 以外の WSL distribution、root での実行は exit 2 で止まります。Windows の `bootstrap.ps1` は、管理者として実行した場合と Windows 以外では exit 2 で止まり、Git Bash から `bootstrap.sh` を実行した場合も exit 2 で `bootstrap.ps1` を案内します。
 
-Windows native は bootstrap の対象外です。宣言を確認してから手動で実行します。
-
-```powershell
-winget import --import-file packages/windows/winget.json
-```
+`winget import` は使いません。パッケージごとに導入済みの判定・実行コマンドの表示・失敗時の停止を行うためです。
 
 既存の Mac では、bootstrap の dry-run で全ステップが `ok` になることを確認済みです（2026-10-11）。
 
@@ -121,7 +106,8 @@ winget import --import-file packages/windows/winget.json
 | `Microsoft.PowerShell` | PowerShell 7 | 宣言済み |
 | `Microsoft.WindowsTerminal` | Windows Terminal | 宣言済み |
 | `Git.Git` | Windows 側の project（Android）用の Git | 宣言済み |
-| `Google.AndroidStudio` | Android Studio（SDK・emulator・adb は SDK Manager で導入） | 宣言済み |
+| `twpayne.chezmoi` | Windows の設定ファイル（PowerShell profile、Windows Terminal fragment） | 宣言済み（2026-10-11 に manifest を確認） |
+| `Google.AndroidStudio` | Android Studio（SDK・emulator・adb は SDK Manager で導入） | 宣言済み（任意：`winget-android.json`） |
 | `JetBrains.IntelliJIDEA` | IntelliJ IDEA（統合版、2025.3 以降） | 保留 |
 | `JetBrains.Toolbox` | JetBrains Toolbox App | 保留 |
 

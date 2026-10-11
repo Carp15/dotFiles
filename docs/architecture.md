@@ -43,4 +43,4 @@ symlink 方式を残しているのは、日常的に編集して差分が頻繁
 5. repository root で `git diff` を確認して commit する
 6. 必要なら `docs/` と `cheatsheets/` を更新する
 
-OS 共通部分を優先し、macOS / Linux / WSL の違いは shell の条件分岐、chezmoi template、ignored local override のいずれかへ小さく分離します。
+OS 共通部分を優先し、macOS / Linux / WSL / Windows native の違いは shell の条件分岐、chezmoi template、ignored local override のいずれかへ小さく分離します。

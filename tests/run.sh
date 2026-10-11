@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Regression tests for platform detection, the chezmoi templates, bootstrap and
-# doctor. Usage: tests/run.sh
+# doctor, including the Windows PowerShell scripts. Usage: tests/run.sh
+#
+# The Windows scripts are exercised by pwsh on this host against stubs
+# (tests/windows.test.sh); they are skipped when pwsh is not found. Point
+# DOTFILES_TEST_PWSH at a pwsh binary to use one that is not on PATH.
 #
 # The tests install nothing and use no network: every command that would change
 # a system (sudo, apt-get, curl, brew, mise, installers) is a stub that records
