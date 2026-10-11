@@ -67,7 +67,7 @@ dotfiles manager は chezmoi である。配置方式は2つだけで、どち�
 | 依頼 | 変更する場所 |
 | --- | --- |
 | zsh 設定を変更して / alias を追加して | `home/dot_zshrc`（login shell 側なら `home/dot_zprofile`） |
-| Git 設定を変えて | global ignore は `home/dot_config/git/ignore`。identity と credential helper は管理対象外なので live に残し、勝手に取り込まない |
+| Git 設定を変えて | 全 machine 共通の設定は `home/dot_config/git/config`、global ignore は `home/dot_config/git/ignore`。identity と credential helper は `~/.gitconfig`（管理対象外）に live のまま残し、勝手に取り込まない |
 | tool version を変えて | `home/dot_config/mise/config.toml` |
 | Neovim 設定を変えて | `config/nvim/`（symlink 方式なので live 側もそのまま変わる） |
 | tmux の alias を追加して | tmux は未インストール・未管理。まず管理方式を確認し、alias だけなら `home/dot_zshrc` |

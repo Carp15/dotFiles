@@ -91,14 +91,15 @@ $rendered"
   # chezmoi cannot run as a Windows binary here, so .chezmoi.os is overridden.
   # This exercises the templates' Windows branch, not Windows itself.
   win='{"chezmoi":{"os":"windows"}}'
-  win_files='.config/git/ignore
+  win_files='.config/git/config
+.config/git/ignore
 .config/powershell/dotfiles.ps1
 AppData/Local/Microsoft/Windows Terminal/Fragments/dotfiles/dotfiles.json
 Documents/PowerShell/Microsoft.PowerShell_profile.ps1'
   managed="$(czrun windows uname-linux "$FX/wsl2" --override-data "$win" managed --include=files)"
   rc=$?
   [ "$rc" = 0 ] && [ "$managed" = "$win_files" ] &&
-    ok "chezmoi (windows): only Git ignore, PowerShell profile and Terminal fragment; no zsh / mise" ||
+    ok "chezmoi (windows): only Git config and ignore, PowerShell profile and Terminal fragment; no zsh / mise" ||
     ng "chezmoi (windows): rc=$rc" "$managed"
 
   # A machine whose Documents is redirected opts out of the ~/Documents loader

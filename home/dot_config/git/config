@@ -1,0 +1,18 @@
+# Git settings shared by every machine (macOS, WSL, Windows), managed by
+# chezmoi. Git reads this file before ~/.gitconfig, which stays per machine
+# and unmanaged: user.name / user.email and the credential helper live there
+# and win when a key is set in both (docs/git.md).
+
+[init]
+	defaultBranch = main
+
+[pull]
+	# Never create a merge commit by accident; diverged histories stop instead.
+	ff = only
+
+[push]
+	# The first push of a new branch sets its upstream (no -u origin <branch>).
+	autoSetupRemote = true
+
+[fetch]
+	prune = true

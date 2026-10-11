@@ -47,6 +47,7 @@ Codex や Claude Code にはまず [AGENTS.md](AGENTS.md) を読ませ、chezmoi
 | --- | --- | --- |
 | chezmoi | `home/dot_zshrc` | `~/.zshrc` |
 | chezmoi | `home/dot_zprofile` | `~/.zprofile` |
+| chezmoi | `home/dot_config/git/config` | `~/.config/git/config`（共通の Git 設定。identity は `~/.gitconfig` に machine ごと） |
 | chezmoi | `home/dot_config/git/ignore` | `~/.config/git/ignore` |
 | chezmoi (template) | `home/dot_config/mise/config.toml.tmpl` | `~/.config/mise/config.toml`（Java の vendor だけ WSL で異なる） |
 | chezmoi（WSL のみ） | `home/dot_config/mise/conf.d/wsl.toml` | `~/.config/mise/conf.d/wsl.toml` |

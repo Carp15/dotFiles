@@ -34,7 +34,7 @@ WSL の判定は従来どおり `scripts/lib/platform.sh` の1か所だけです
 
 | source | 配置先 | 方式 |
 | --- | --- | --- |
-| `home/dot_config/git/ignore` | `~\.config\git\ignore` | 全 OS 共通。Git for Windows も `$HOME/.config/git/ignore` を読む |
+| `home/dot_config/git/config`、`home/dot_config/git/ignore` | `~\.config\git\config`、`~\.config\git\ignore` | 全 OS 共通。Git for Windows も `$HOME/.config/git/` を読む。identity は `~\.gitconfig` に machine ごと（[Git](git.md)） |
 | `home/dot_config/powershell/dotfiles.ps1` | `~\.config\powershell\dotfiles.ps1` | 共有の PowerShell 7 設定。chezmoi が常に最新に保つ |
 | `home/Documents/PowerShell/create_Microsoft.PowerShell_profile.ps1` | `~\Documents\PowerShell\Microsoft.PowerShell_profile.ps1`（`$PROFILE`） | `create_`：**存在しないときだけ作る**。既存の profile は上書きしない |
 | `home/AppData/Local/Microsoft/Windows Terminal/Fragments/dotfiles/dotfiles.json` | `%LOCALAPPDATA%\Microsoft\Windows Terminal\Fragments\dotfiles\dotfiles.json` | Windows Terminal の JSON fragment。`settings.json` は触らない |
@@ -308,7 +308,7 @@ Windows 実機で初めてセットアップするときに、この順で確認
    - OneDrive の場合は `skipPowerShellProfile = true` で `chezmoi managed` から `Documents/...` が消えること。
 10. **doctor の profile 判定**：上の各状態で `pwsh -File scripts\doctor.ps1` の `Loaded` が [表](#powershell-profile-の配置と読み込み) のとおりになること。Windows PowerShell 5.1 の profile がある場合は `5.1 profile present` が情報として出るだけで、内容が変わらないこと。
 11. **Windows Terminal**：「WSL (home)」profile が表示され、開くと Linux の home にいること。`settings.json` が chezmoi apply で変わっていないこと。
-12. **Git ignore**：Windows の Git で `git check-ignore -v .DS_Store` が `~/.config/git/ignore` を示すこと。
+12. **Git**：Windows の Git で `git check-ignore -v .DS_Store` が `~/.config/git/ignore` を示し、`git config --show-origin init.defaultBranch` が `~/.config/git/config` を示すこと。
 13. **doctor（基本環境）**：Android SDK がない状態で `pwsh -File scripts\doctor.ps1` が `Result: 0 error(s)` になり、android グループが `not set up` と表示されること。Windows PowerShell 5.1 で実行すると PowerShell 7 の warn が出ること。
 14. **Android（任意）**：`--apply --with android` で Android Studio だけが追加で入ること。SDK の platform-tools を PATH に入れた後、`doctor.ps1 --with android` が 0 error になること。emulator（`-accel-check`）。
 15. **WSL 側の回帰**：WSL で `./scripts/doctor.sh` と `chezmoi managed` が以前と同じであること。

@@ -24,6 +24,7 @@ dotFiles/                     <- Git repository root / chezmoi working tree
 │   ├── dot_zshrc             -> ~/.zshrc
 │   ├── dot_zprofile          -> ~/.zprofile
 │   ├── dot_config/
+│   │   ├── git/config        -> ~/.config/git/config（共通の Git 設定）
 │   │   ├── git/ignore        -> ~/.config/git/ignore
 │   │   ├── mise/config.toml  -> ~/.config/mise/config.toml（Windows 以外）
 │   │   └── powershell/dotfiles.ps1  -> ~/.config/powershell/dotfiles.ps1（Windows のみ）
