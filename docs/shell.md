@@ -12,7 +12,9 @@
 - `compinit` で補完を有効にする。`fpath` には `brew shellenv` が Homebrew の `site-functions` を入れるため、formula が入れた補完（chezmoi 等）も使える。
 - `codexa` は `codex --profile auto`、`codexf` は `codex --profile full` の短縮名。
 
-この source state は live の `~/.zprofile` / `~/.zshrc` とまだ一致していません。live 側には `/Users/<user>` の絶対 path、stale な Go の PATH 追加、Antigravity CLI installer が追記した重複 PATH が残っています。反映するには `chezmoi diff` を確認してから `chezmoi apply` を実行します（[chezmoi](chezmoi.md) 参照）。
+この source state は macOS の live `~/.zprofile` / `~/.zshrc` へ反映済みで、`chezmoi status` に差分は出ません（2026-10-13 確認）。以前 live にあった `/Users/<user>` の絶対 path、stale な Go の PATH 追加、Antigravity CLI installer が追記した重複 PATH は、反映の時点で消えています。変更するときは source state を編集し、`chezmoi diff` を確認してから自分で `chezmoi apply` します（[chezmoi](chezmoi.md) 参照）。同じ2ファイルが WSL にも配置され、Windows native には配置されません（[windows](windows.md)）。
+
+新しい login shell の PATH には重複も相対 path もありません。Orca などのアプリから起動した shell では、起動元が渡した PATH（存在しない directory や相対 path を含むことがある）が引き継がれるため、`scripts/doctor.sh` が error や warning を出すことがあります。これは dotfiles ではなく起動元の問題です（[packages](packages.md) の既知の問題）。
 
 `brew`、`mise`、`codex`、JavaはこのMacで確認済みですが、別環境で必須とはしません。Homebrew prefixはApple SiliconとIntelの既定位置を条件付きで扱い、Linux/WSLでは存在しなければ何もしません。hostname、private path、account・組織固有値は共通設定に入れず、必要なら `local/` または将来のmanagerの条件分岐に分離します。
 

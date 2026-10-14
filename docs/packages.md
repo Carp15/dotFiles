@@ -95,7 +95,9 @@ bootstrap は既存のコマンドを入れ直さず、アップグレードも�
 
 `winget import` は使いません。パッケージごとに導入済みの判定・実行コマンドの表示・失敗時の停止を行うためです。
 
-既存の Mac では、bootstrap の dry-run で全ステップが `ok` になることを確認済みです（2026-10-11）。
+bootstrap が待つのは、各ステップが依存する chezmoi の target だけです。mise のツールは mise の設定（`~/.config/mise/config.toml`、WSL では `conf.d/wsl.toml` も）、公式 installer は PATH を通す shell の起動ファイル（`~/.zshrc`、`~/.zprofile`）が未適用のとき `blocked` になります。それ以外の target（Git の共通設定など）が未適用でも、`not needed by bootstrap` と表示するだけで止まりません。`chezmoi` が無い、source が別の repository、`chezmoi status` 自体が失敗した、のいずれかの場合は、両方とも `blocked` です。
+
+既存の Mac では、bootstrap の dry-run で全ステップが `ok` になることを確認済みです（2026-10-13）。
 
 ## winget ID
 
@@ -160,7 +162,7 @@ mise は `~/.config/mise/config.toml` と `~/.config/mise/conf.d/*.toml` をど�
 
 ## 既知の問題（未修正）
 
-既存 macOS の挙動を変えないため、記録だけしておきます。
+既存 macOS の挙動を変えないため、記録だけしておきます。Phase 4C で1件ずつ、承認を得てから扱います（2026-10-13 の Phase 4A 調査でも同じ状態）。
 
 - **Java**: macOS では mise の `java = "21"` が、更新の止まった openjdk 21.0.2 に解決される。WSL は Phase 2 から `temurin-21`。macOS の移行は未実施。
 - **npm**: 通常の login shell では、宣言どおり mise の `npm 11.15.0` が node 同梱の npm より先に来る（2026-10-11 に確認）。Phase 0 の棚卸しで「node 同梱の npm（11.17.0）が先に来る」としたのは、Orca が PATH の先頭に `node/24/bin` を注入した環境で調べたためで、dotfiles の問題ではなかった。node 同梱の npm を global 更新した状態が残っている点だけが未整理。
@@ -168,5 +170,5 @@ mise は `~/.config/mise/config.toml` と `~/.config/mise/conf.d/*.toml` をど�
 - **Antigravity CLI**: 手動配置の binary と cask の二重導入。
 - **IntelliJ**: 壊れた cask の記録。
 - **PATH**: 起動元アプリ（Orca）経由の環境に、存在しない path、相対 path、`node/24/bin` が先頭に入る。login shell 自体の PATH は正常。`scripts/doctor.sh` はこの環境で実行すると、相対 path を error として exit 1 を返す。
-- **mise**: どの設定からも参照されていない古い version が残っている（`mise prune --dry-run` で確認できる）。
-- **手動 binary**: `~/.local/bin/omp`、`/usr/local/bin/apm`、`/usr/local/bin/docker-compose` は、どの manager の管理下にもない。
+- **mise**: どの設定からも参照されていない古い version が残っている（dotnet、go 1.25.1 / 1.26.2、node 22 / 24.14.1、pnpm 2件、python 3.11、uv。`mise prune --dry-run` で確認できる）。Java の移行の後に整理する。
+- **手動 binary**: `~/.local/bin/omp`、`/usr/local/bin/docker-compose` は、どの manager の管理下にもない。`/usr/local/bin/apm` は Microsoft APM（Agent Package Manager）で、Skills・Agents を `~/.apm` から配布している。本体の導入方法は Phase 4D で決める。

@@ -35,7 +35,8 @@ case "$1" in
   source-path) cat "$W/source-path" ;;
   status)
     [ -e "$W/ctl/chezmoi-fails" ] && { echo "chezmoi: template error" >&2; exit 1; }
-    [ -e "$W/ctl/chezmoi-unapplied" ] && echo " M .zshrc"
+    # Lines of $W/chezmoi-status are what `chezmoi status` reports as pending.
+    [ -e "$W/chezmoi-status" ] && cat "$W/chezmoi-status"
     exit 0 ;;
   *) echo "chezmoi $*" >>"$W/calls"; exit 99 ;;
 esac'
@@ -146,24 +147,65 @@ check "bootstrap --apply again: nothing to install" 0 "$rc" "$out" 'Nothing to i
 
 # --- safety stops ------------------------------------------------------------
 
-for case_line in "chezmoi-unapplied|unapplied changes" "chezmoi-fails|'chezmoi status' failed"; do
-  ctl="${case_line%%|*}"
-  reason="${case_line#*|}"
-  W="$TEST_TMP/bs-$ctl"
+# Only the targets a step needs block it: mise tools wait for the mise
+# configuration, the official installers for the shell startup files, and an
+# unrelated pending target (Git settings) blocks nothing.
+# bs_pending NAME STATUS_LINES: a fresh machine whose chezmoi reports STATUS_LINES.
+bs_pending() {
+  W="$TEST_TMP/bs-pending-$1"
   bs_machine "$W"
-  touch "$W/ctl/$ctl"
+  printf '%s\n' "$2" >"$W/chezmoi-status"
   out="$(bs_run "$W" --apply)"
   rc=$?
   got="$(bs_calls "$W")"
-  if [ "$rc" = 1 ] && printf '%s\n' "$out" | grep -qF "$reason" &&
-    printf '%s\n' "$out" | grep -qE '^  blocked +Claude Code +apply chezmoi first' &&
-    ! printf '%s' "$got" | grep -qE 'mise install \(|claude|codex'; then
-    ok "bootstrap --apply with $ctl: mise tools and installers blocked, exit 1"
-  else
-    ng "bootstrap --apply with $ctl (exit $rc)" "$got
+}
+
+bs_pending git ' A .config/git/config'
+[ "$rc" = 0 ] && printf '%s' "$got" | grep -q 'mise install (' && printf '%s' "$got" | grep -q 'run codex installer' &&
+  printf '%s\n' "$out" | grep -qE '\.config/git/config +\(not needed by bootstrap\)' &&
+  ok "bootstrap --apply with only Git settings pending: nothing blocked, exit 0" ||
+  ng "unrelated pending target blocked bootstrap (exit $rc)" "$got
 $out"
-  fi
-done
+
+bs_pending zshrc ' M .zshrc'
+[ "$rc" = 1 ] && printf '%s' "$got" | grep -q 'mise install (' && ! printf '%s' "$got" | grep -qE 'claude|codex' &&
+  printf '%s\n' "$out" | grep -qE '^  blocked +Claude Code +~/\.zshrc is not applied yet' &&
+  printf '%s\n' "$out" | grep -qE '\.zshrc +\(needed by bootstrap\)' &&
+  ok "bootstrap --apply with ~/.zshrc pending: installers blocked, mise tools still run, exit 1" ||
+  ng "shell target pending (exit $rc)" "$got
+$out"
+
+bs_pending zprofile ' M .zprofile'
+[ "$rc" = 1 ] && ! printf '%s' "$got" | grep -qE 'claude|codex' &&
+  ok "bootstrap --apply with ~/.zprofile pending: installers blocked, exit 1" || ng "zprofile pending (exit $rc)" "$got
+$out"
+
+bs_pending mise ' M .config/mise/config.toml'
+[ "$rc" = 1 ] && ! printf '%s' "$got" | grep -q 'mise install (' && printf '%s' "$got" | grep -q 'run codex installer' &&
+  printf '%s\n' "$out" | grep -qE '^  blocked +mise tools .*~/\.config/mise/config\.toml is not applied yet' &&
+  ok "bootstrap --apply with the mise config pending: mise tools blocked, installers still run, exit 1" ||
+  ng "mise config pending (exit $rc)" "$got
+$out"
+
+bs_pending wsl-conf ' A .config/mise/conf.d
+ A .config/mise/conf.d/wsl.toml'
+[ "$rc" = 1 ] && ! printf '%s' "$got" | grep -q 'mise install (' &&
+  ok "bootstrap --apply on WSL with conf.d/wsl.toml pending: mise tools blocked, exit 1" ||
+  ng "wsl conf.d pending (exit $rc)" "$got
+$out"
+
+W="$TEST_TMP/bs-chezmoi-fails"
+bs_machine "$W"
+touch "$W/ctl/chezmoi-fails"
+out="$(bs_run "$W" --apply)"
+rc=$?
+got="$(bs_calls "$W")"
+[ "$rc" = 1 ] && printf '%s\n' "$out" | grep -qF "'chezmoi status' failed" &&
+  printf '%s\n' "$out" | grep -qE '^  blocked +Claude Code' && printf '%s\n' "$out" | grep -qE '^  blocked +mise tools' &&
+  ! printf '%s' "$got" | grep -qE 'mise install \(|claude|codex' &&
+  ok "bootstrap --apply when chezmoi status fails: mise tools and installers blocked, exit 1" ||
+  ng "chezmoi status failure (exit $rc)" "$got
+$out"
 
 W="$TEST_TMP/bs-fetch-fails"
 bs_machine "$W"

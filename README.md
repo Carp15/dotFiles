@@ -99,8 +99,9 @@ password、API/access/refresh token、private key、credential、cookie、sessio
 
 ### Phase 4 — portability（進行中）
 
-- `chezmoi apply` による live 反映（zsh / mise は差分レビュー待ち）
-- WSL2 Ubuntu 対応（設定・bootstrap・doctor を実装済み。WSL 実機での検証は未実施）
-- bootstrap の自動化範囲の判断（macOS / WSL の bootstrap は実装済み）
-- Windows 11 native 対応（PowerShell 7 profile、Windows Terminal fragment、`bootstrap.ps1` / `doctor.ps1` を実装済み。モックテストのみで、Windows 実機での検証は未実施。[docs/windows.md](docs/windows.md)）
+- macOS：zsh / mise / Git の共通設定は live へ反映済み（`~/.config/git/config` は 2026-10-13 に反映）。bootstrap は、各ステップが依存する target が未適用のときだけ止まる
+- WSL2 Ubuntu 対応（設定・bootstrap・doctor。WSL 環境の構築まで完了）
+- Windows 11 native 対応（PowerShell 7 profile、Windows Terminal fragment、`bootstrap.ps1` / `doctor.ps1`。Windows 実機の doctor で 0 errors / 0 warnings。[docs/windows.md](docs/windows.md)）
+- macOS の保留項目の整理（Java の vendor、mise の古い version、二重導入の CLI など。1件ずつ承認を得て実施。[docs/packages.md](docs/packages.md) の既知の問題）
+- AI 開発ツールの設定の共通化（APM が Skills・Agents・Instructions を配布し、chezmoi はツール設定と APM の宣言ファイルを管理する方針。未実装）
 - 追加候補（starship、tmux、gh の非認証設定など）の個別評価

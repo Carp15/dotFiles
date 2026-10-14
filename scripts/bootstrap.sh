@@ -105,28 +105,70 @@ if [ "$(id -u)" -eq 0 ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# chezmoi must have placed the shell and mise configuration first: mise reads
-# its tool list from it, and installers must not find an unconfigured profile.
+# chezmoi must have placed the files a step depends on: mise reads its tool list
+# from its configuration, and installers must find the shell startup files that
+# put ~/.local/bin on PATH. Only those targets are checked; an unapplied change
+# to anything else (e.g. Git settings) is listed but does not block a step.
+
+# Targets (relative to $HOME, as `chezmoi status` prints them) each step needs.
+shell_targets=".zshrc .zprofile"
+mise_targets=".config/mise/config.toml"
+if [ "$platform" = "wsl" ]; then
+  mise_targets="$mise_targets .config/mise/conf.d .config/mise/conf.d/wsl.toml"
+fi
 
 # Physical path, so a symlinked checkout still matches chezmoi's source path.
 physical_dir() {
   [ -n "$1" ] && (cd "$1" 2>/dev/null && pwd -P)
 }
 
-chezmoi_ready=0
+# chezmoi_state: ok | missing | foreign | failed. chezmoi_pending: one target
+# per line that chezmoi status reports as not applied.
+chezmoi_state=ok
+chezmoi_pending=""
 section "Prerequisite: chezmoi"
 if ! command -v chezmoi >/dev/null 2>&1; then
+  chezmoi_state=missing
   printf '  %s\n' "todo  chezmoi is not installed (see docs/wsl.md or docs/chezmoi.md)"
 elif [ "$(physical_dir "$(chezmoi source-path 2>/dev/null)")" != "$(physical_dir "$repo_root/home")" ]; then
+  chezmoi_state=foreign
   printf '  %s\n' "todo  chezmoi source is not this repository: write sourceDir to ~/.config/chezmoi/chezmoi.toml"
 elif ! chezmoi_status="$(chezmoi status 2>&1)"; then
+  chezmoi_state=failed
   printf '  %s\n' "todo  'chezmoi status' failed: $(printf '%s\n' "$chezmoi_status" | head -1)"
-elif [ -n "$chezmoi_status" ]; then
-  printf '  %s\n' "todo  chezmoi has unapplied changes: review 'chezmoi diff', then run 'chezmoi apply' yourself"
 else
-  chezmoi_ready=1
-  printf '  %s\n' "ok    source state is applied ($(chezmoi source-path))"
+  # Each status line is two status letters, a space, then the target path.
+  chezmoi_pending="$(printf '%s\n' "$chezmoi_status" | awk 'NF {print substr($0, 4)}')"
+  if [ -z "$chezmoi_pending" ]; then
+    printf '  %s\n' "ok    source state is applied ($(chezmoi source-path))"
+  else
+    printf '  %s\n' "note  not applied yet (review 'chezmoi diff', then apply it yourself):"
+    printf '%s\n' "$chezmoi_pending" | while IFS= read -r target; do
+      case " $shell_targets $mise_targets " in
+        *" $target "*) printf '          %s  (needed by bootstrap)\n' "$target" ;;
+        *) printf '          %s  (not needed by bootstrap)\n' "$target" ;;
+      esac
+    done
+  fi
 fi
+
+# chezmoi_blocker TARGET...: prints why a step needing these targets must wait,
+# or nothing (and fails) when chezmoi has applied all of them.
+chezmoi_blocker() {
+  local target
+  case "$chezmoi_state" in
+    missing) echo "chezmoi is not installed" && return 0 ;;
+    foreign) echo "chezmoi source is not this repository" && return 0 ;;
+    failed) echo "'chezmoi status' failed" && return 0 ;;
+  esac
+  for target in "$@"; do
+    if printf '%s\n' "$chezmoi_pending" | grep -qxF "$target"; then
+      echo "~/$target is not applied yet (chezmoi apply)"
+      return 0
+    fi
+  done
+  return 1
+}
 
 # ---------------------------------------------------------------------------
 # Steps. check_<step> sets step_state (ok | todo | blocked | manual) and
@@ -223,14 +265,19 @@ mise_missing() {
 }
 title_mise_tools="mise tools (Java, Node, Go, ...)"
 check_mise_tools() {
-  local missing
+  local missing blocker
   if ! command -v mise >/dev/null 2>&1; then
     step_state=todo step_detail="runs after mise is installed"
     return
   fi
-  if [ "$chezmoi_ready" -ne 1 ] || [ ! -f "$HOME/.config/mise/config.toml" ] ||
+  # shellcheck disable=SC2086 # target lists are space-separated words
+  if blocker="$(chezmoi_blocker $mise_targets)"; then
+    step_state=blocked step_detail="$blocker"
+    return
+  fi
+  if [ ! -f "$HOME/.config/mise/config.toml" ] ||
     { [ "$platform" = "wsl" ] && [ ! -f "$HOME/.config/mise/conf.d/wsl.toml" ]; }; then
-    step_state=blocked step_detail="mise configuration is not applied yet (chezmoi apply)"
+    step_state=blocked step_detail="mise configuration is missing (chezmoi apply)"
     return
   fi
   if ! missing="$(mise_missing)"; then
@@ -254,7 +301,7 @@ apply_mise_tools() {
 # Satisfied when the command exists as a Linux/macOS binary. On WSL a match
 # under /mnt/ is a Windows executable reached through interop and does not count.
 check_official() {
-  local name="$1" path
+  local name="$1" path blocker
   path="$(command -v "$name" 2>/dev/null)"
   case "$path" in
     "") ;;
@@ -264,8 +311,9 @@ check_official() {
       return
       ;;
   esac
-  if [ "$chezmoi_ready" -ne 1 ]; then
-    step_state=blocked step_detail="${step_detail:+$step_detail; }apply chezmoi first so the installer finds a configured PATH"
+  # shellcheck disable=SC2086 # target lists are space-separated words
+  if blocker="$(chezmoi_blocker $shell_targets)"; then
+    step_state=blocked step_detail="${step_detail:+$step_detail; }$blocker; the installer needs the configured PATH"
   else
     step_state=todo step_detail="${step_detail:-not installed}"
   fi
