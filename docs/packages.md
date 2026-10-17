@@ -17,7 +17,7 @@
 | --- | --- | --- | --- |
 | OS パッケージ・CLI | Homebrew（`packages/macos/Brewfile`） | apt（`packages/wsl/apt.txt`）。apt では不十分な CLI は mise（`home/dot_config/mise/conf.d/wsl.toml`） | winget（基本環境は `packages/windows/winget.json`、任意のツールは `winget-<group>.json`） |
 | GUI アプリ | Homebrew Cask（同 Brewfile） | – | winget（同 winget.json） |
-| 開発ランタイム | mise（`home/dot_config/mise/config.toml.tmpl`） | mise（同。Java だけ `temurin-21`） | 原則不要（WSL 側を使う） |
+| 開発ランタイム | mise（`home/dot_config/mise/config.toml`。Java は `temurin-21`） | mise（同じファイル） | 原則不要（WSL 側を使う） |
 | 公式 installer 推奨の CLI | 公式 installer（Claude Code は導入済み） | 公式 installer（mise、Claude Code、Codex CLI） | 原則不要 |
 | 設定ファイル | chezmoi（`home/`）・symlink（`config/nvim/`） | 同左 | chezmoi（Git ignore、PowerShell profile、Windows Terminal fragment。[Windows](windows.md)） |
 | 必須コマンドの宣言 | `packages/commands/common.txt` + `macos.txt` | `common.txt` + `wsl.txt` | `windows.txt` + winget.json（任意のグループは `windows-<group>.txt` + `winget-<group>.json`。`--with <group>` のときだけ必須） |
@@ -124,7 +124,7 @@ bootstrap が待つのは、各ステップが依存する chezmoi の target �
 | git、zsh、curl、ripgrep、jq、build-essential、unzip | apt | Ubuntu 24.04 の version で足り、security update が apt で届く |
 | chezmoi | 公式 installer（`get.chezmoi.io`、手動・bootstrap より前） | bootstrap の前提なので、bootstrap では入れられない。checksum を照合し、profile は変更しない。更新は `chezmoi upgrade` |
 | mise | 公式 installer（`mise.run`） | Linux での公式推奨。`mise self-update` が使え、profile は変更しない。PPA は `sudo` と apt source の追加が必要になる |
-| Java / Node / Go / npm | mise（`config.toml`） | macOS と共通の宣言。Java は WSL だけ `temurin-21`（後述） |
+| Java / Node / Go / npm | mise（`config.toml`） | macOS と共通の宣言。Java は全 platform で `temurin-21` |
 | Neovim | mise（`aqua:neovim/neovim`、`0.12`） | apt は 0.9.5 で、AstroNvim v6 の要件（0.11 以上）を満たさない。公式 release を使う。registry の既定 backend は vfox なので aqua を明示している |
 | gh | mise（`aqua:cli/cli`、`2`） | 公式 release binary を使い、root 権限も apt source の追加も要らない。公式 apt repo も選択肢だが、keyring 管理が増える |
 | ghq / lazygit / tree-sitter | mise（aqua、`1` / `0.66` / `0.27`） | Ubuntu 24.04 の apt にない。公式 release binary を使う |
@@ -141,7 +141,7 @@ version は prefix で宣言しています。`mise install` はその系列の�
 mise は `~/.config/mise/config.toml` と `~/.config/mise/conf.d/*.toml` をどちらも global 設定として読みますが、同じツールがあると **`config.toml` が優先**されます（mise 2026.10.0 で、隔離した設定ディレクトリを使って確認）。そのため:
 
 - WSL だけのツールは `conf.d/wsl.toml` に追加する。chezmoi はこのファイルを WSL でだけ配置する（`home/.chezmoiignore`）。
-- `config.toml` にあるツールの値を WSL だけ変える場合（Java の vendor）は、conf.d では上書きできない。`config.toml.tmpl` の条件分岐で変える。macOS でレンダリングされる内容は変わらない。
+- `config.toml` にあるツールの値は conf.d では上書きできない。platform ごとに値を変える必要が出たら、`config.toml` を template にして分岐する（以前の Java の vendor がそうだったが、全 platform を `temurin-21` にそろえたため今は不要）。
 - project の `mise.toml` は global 設定より優先される（同じ方法で確認）。project 固有の version は project 側で宣言する。
 - `config.local.toml` も `config.toml` より優先されるが、machine ごとの手元用に空けておき、repository では使わない。
 
@@ -164,7 +164,7 @@ mise は `~/.config/mise/config.toml` と `~/.config/mise/conf.d/*.toml` をど�
 
 既存 macOS の挙動を変えないため、記録だけしておきます。Phase 4C で1件ずつ、承認を得てから扱います（2026-10-13 の Phase 4A 調査でも同じ状態）。
 
-- **Java**: macOS では mise の `java = "21"` が、更新の止まった openjdk 21.0.2 に解決される。WSL は Phase 2 から `temurin-21`。macOS の移行は未実施。
+- **Java**: 2026-10-15 に macOS も `temurin-21` へ移行し、解消した（[mise](mise.md)）。切り戻し用に旧 JDK の openjdk 21.0.2 を残しており、削除は未実施。
 - **npm**: 通常の login shell では、宣言どおり mise の `npm 11.15.0` が node 同梱の npm より先に来る（2026-10-11 に確認）。Phase 0 の棚卸しで「node 同梱の npm（11.17.0）が先に来る」としたのは、Orca が PATH の先頭に `node/24/bin` を注入した環境で調べたためで、dotfiles の問題ではなかった。node 同梱の npm を global 更新した状態が残っている点だけが未整理。
 - **Codex**: brew cask で導入。公式 standalone installer との経路の違い。
 - **Antigravity CLI**: 手動配置の binary と cask の二重導入。

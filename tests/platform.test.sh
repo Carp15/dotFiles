@@ -1,5 +1,6 @@
 # Platform detection (scripts/lib/platform.sh), the chezmoi templates that call
-# it, and the per-platform mise configuration they render.
+# it, and the mise configuration each platform receives (the same Java vendor
+# everywhere; conf.d/wsl.toml only on WSL).
 # shellcheck shell=bash
 
 # --- scripts/lib/platform.sh -------------------------------------------------
@@ -62,7 +63,7 @@ else
 
   for variant in no-git git; do
     [ "$variant" = git ] && git -C "$clone" init -q
-    for case_line in "wsl|uname-linux|wsl2|temurin-21|yes" "linux|uname-linux|plain|21|no" "macos|uname-darwin|plain|21|no"; do
+    for case_line in "wsl|uname-linux|wsl2|temurin-21|yes" "linux|uname-linux|plain|temurin-21|no" "macos|uname-darwin|plain|temurin-21|no"; do
       split "$case_line"
       platform="${split_fields[0]}" uname_dir="${split_fields[1]}" fixture="${split_fields[2]}"
       java="${split_fields[3]}" conf_d="${split_fields[4]}"

@@ -49,7 +49,7 @@ Codex や Claude Code にはまず [AGENTS.md](AGENTS.md) を読ませ、chezmoi
 | chezmoi | `home/dot_zprofile` | `~/.zprofile` |
 | chezmoi | `home/dot_config/git/config` | `~/.config/git/config`（共通の Git 設定。identity は `~/.gitconfig` に machine ごと） |
 | chezmoi | `home/dot_config/git/ignore` | `~/.config/git/ignore` |
-| chezmoi (template) | `home/dot_config/mise/config.toml.tmpl` | `~/.config/mise/config.toml`（Java の vendor だけ WSL で異なる） |
+| chezmoi | `home/dot_config/mise/config.toml` | `~/.config/mise/config.toml`（macOS と WSL で共通。Java は `temurin-21`） |
 | chezmoi（WSL のみ） | `home/dot_config/mise/conf.d/wsl.toml` | `~/.config/mise/conf.d/wsl.toml` |
 | chezmoi（Windows のみ） | `home/dot_config/powershell/dotfiles.ps1` | `~\.config\powershell\dotfiles.ps1`（PowerShell 7 の共有設定） |
 | chezmoi（Windows のみ、`create_`） | `home/Documents/PowerShell/create_Microsoft.PowerShell_profile.ps1` | `$PROFILE`（存在しないときだけ作る loader） |

@@ -2,22 +2,34 @@
 
 mise は user-level の tool version 管理に使います。macOS と WSL で共通の宣言を持ち、WSL だけ CLI を追加します。担当分けの全体は [packages](packages.md) を参照してください。
 
-## 共通の宣言（`home/dot_config/mise/config.toml.tmpl` → `~/.config/mise/config.toml`）
+## 共通の宣言（`home/dot_config/mise/config.toml` → `~/.config/mise/config.toml`）
 
 | Tool | 管理値 | 方針 |
 | --- | --- | --- |
 | Go | `1.26.3` | exact version で再現性を優先 |
-| Java | macOS: `21` / WSL: `temurin-21` | major version を維持。vendor は後述 |
+| Java | `temurin-21` | vendor と major version を明示（後述） |
 | Node.js | `24` | major version を宣言 |
 | npm | `11.15.0` | exact version を維持（後述の既知の問題を参照） |
 
-`config.toml` は chezmoi template です。違いは Java の行だけで、macOS でレンダリングされる内容は template にする前と1バイトも変わりません。
+macOS と WSL に同じファイルを配置します（Windows native には配置しません）。template ではありません。
 
 ### Java の vendor
 
-`java = "21"` は mise の既定 vendor（openjdk）に解決され、この Mac では 21.0.2（2024-01）のまま更新されていません。openjdk の GA build は次の feature release が出ると更新が止まるためです。新しく作る WSL 環境では、security update が続く `temurin-21` から始めます。
+Java は全 platform で `temurin-21`（Eclipse Temurin 21）を明示します。Temurin は LTS に四半期ごとの security update を出し続けます。
 
-macOS の移行（`21` → `temurin-21`）はまだ行っていません。移行するときは template の分岐をなくして両方を `temurin-21` にし、IntelliJ や Gradle に登録された旧 JDK の path を確認したうえで、旧版を `mise prune` で整理します。`JAVA_HOME` は zshrc が mise の選んだ java から求めるので、手で変える必要はありません。
+vendor を省いた `java = "21"` は、mise の既定 vendor（`java.shorthand_vendor`）に従います。既定は現在の mise では `temurin` ですが、以前の mise は `openjdk`（jdk.java.net の build）でした。openjdk の GA build は次の feature release が出ると更新が止まるため、その頃に入れた JDK は 21.0.2 のままになります。さらに mise は、宣言を満たす版がインストール済みならそれを使い続けるため、`21` のままでは古い JDK から自動では移りません。vendor を明示すれば、既定がまた変わってもどの machine でも同じ JDK になります。
+
+macOS は 2026-10-15 に `21`（openjdk 21.0.2）から `temurin-21`（Temurin 21.0.12.1+1、mise 上の名前は `temurin-21.0.12+101.0.LTS`）へ移行しました。手順は次のとおりです。
+
+1. 先に `mise install java@temurin-21` で新しい JDK を入れる（設定はまだ変えない）
+2. `chezmoi apply ~/.config/mise/config.toml` で宣言を切り替える
+3. 新しい shell で `java -version` と `JAVA_HOME` を確認する
+
+順序を逆にすると、宣言された版が未インストールの間、`java` が macOS の `/usr/bin/java`（JDK ではない stub）に解決され、`JAVA_HOME` も空になります。
+
+`JAVA_HOME` は zshrc が `mise which java` から求めます。macOS の JDK bundle は、mise が vendor に関係なく `Contents/Home` の中身をインストール先の直下に展開するので、Temurin でも同じ式で正しい path になります。
+
+旧 JDK（`21.0.2`）は、切り戻し用にしばらく残しています。戻すときは Java の行を `21` に戻して `chezmoi apply ~/.config/mise/config.toml` すれば、インストール済みの 21.0.2 が使われます（download は不要）。削除は様子を見てから別途行います。
 
 ## WSL だけの宣言（`home/dot_config/mise/conf.d/wsl.toml`）
 

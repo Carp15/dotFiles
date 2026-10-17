@@ -94,15 +94,14 @@ machine 依存値は、次の順で「共通化 → OS 依存 → machine 依存
 
 `.tmpl` は、shell の条件分岐では表現できない差分（設定ファイル形式が条件分岐を持たない場合など）がある場合に限って使います。shell 設定の OS 差分は存在チェックで済むため、zshrc / zprofile は template にしていません。
 
-現在 template を使っているのは次の3か所で、WSL と Windows native への対応のためです。
+現在 template を使っているのは次の2か所で、WSL と Windows native への対応のためです。
 
 | ファイル | 用途 |
 | --- | --- |
 | `home/.chezmoitemplates/platform` | `macos` / `wsl` / `linux` / `windows` を返す named template。判定ロジックは持たず、`scripts/lib/platform.sh` を呼ぶ |
 | `home/.chezmoiignore` | WSL 以外では `~/.config/mise/conf.d` を、Windows では zsh と mise を、Windows 以外では PowerShell と Windows Terminal の target を外す（`.chezmoiignore` は常に template として評価される） |
-| `home/dot_config/mise/config.toml.tmpl` | Java の vendor を WSL だけ `temurin-21` にする。TOML は条件分岐を書けず、conf.d から `config.toml` の値は上書きできないため |
 
-`.chezmoi.os` は WSL でも `linux` を返すため、WSL の判定には使いません（`windows` を返すのは Windows native だけなので、`platform` template は Windows の判定にだけ使います。[Windows](windows.md#判定)）。判定は `scripts/lib/platform.sh` の1か所にまとめ、chezmoi と shell script がずれないようにしています（詳細は [WSL](wsl.md)）。template を変えたら、macOS で `chezmoi diff` が空のままであることと、`chezmoi cat ~/.config/mise/config.toml` が live と一致することを確認します。
+`.chezmoi.os` は WSL でも `linux` を返すため、WSL の判定には使いません（`windows` を返すのは Windows native だけなので、`platform` template は Windows の判定にだけ使います。[Windows](windows.md#判定)）。判定は `scripts/lib/platform.sh` の1か所にまとめ、chezmoi と shell script がずれないようにしています（詳細は [WSL](wsl.md)）。template を変えたら、macOS で `chezmoi diff` が空のままであることを確認します。以前は `config.toml` も Java の vendor を platform で分ける template でしたが、全 platform を `temurin-21` にそろえたため、通常のファイルに戻しました（[mise](mise.md)）。
 
 ## Secret の扱い
 

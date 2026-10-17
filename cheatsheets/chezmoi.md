@@ -38,7 +38,7 @@ chezmoi apply ~/.zshrc              # 対象を絞って反映
 | --- | --- |
 | `dot_zshrc` | `~/.zshrc` |
 | `dot_config/git/ignore` | `~/.config/git/ignore` |
-| `*.tmpl` | template として render される（`dot_config/mise/config.toml.tmpl`） |
+| `*.tmpl` | template として render される（現在は無し。`.chezmoiignore` と `.chezmoitemplates/` は常に template） |
 | `create_<name>` | 存在しないときだけ作る。既存ファイルと以後の編集は上書きしない（Windows の `$PROFILE`） |
 
 ## やらないこと

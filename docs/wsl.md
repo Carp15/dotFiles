@@ -7,9 +7,7 @@ Windows では、WSL2 上の Ubuntu をバックエンド開発の主環境に�
 ## 方針
 
 - project は Linux filesystem 上（`~/ghq/...`）に置く。`/mnt/c/...` 上の project は I/O が遅く、ファイル監視・権限・改行コードで問題が起きやすい。
-- 設定は macOS と共通の chezmoi source state を使う。WSL だけの差分は次の2つ。
-  - `~/.config/mise/conf.d/wsl.toml`：WSL で mise が担当する CLI。WSL でだけ配置する。
-  - `~/.config/mise/config.toml` の Java の vendor：WSL は `temurin-21`、macOS は移行まで `21` のまま。
+- 設定は macOS と共通の chezmoi source state を使う。WSL だけの差分は `~/.config/mise/conf.d/wsl.toml`（WSL で mise が担当する CLI。WSL でだけ配置する）。Java は macOS と同じ `temurin-21`。
 - OS / WSL の判定は `scripts/lib/platform.sh` の1か所にまとめている。chezmoi も `home/.chezmoitemplates/platform` 経由でこれを呼ぶ。`/proc/sys/kernel/osrelease` に `microsoft` を含めば WSL（WSL1 は `-Microsoft`、WSL2 は `-microsoft-standard-WSL2`）。カスタムカーネルの場合に備えて `WSL_DISTRO_NAME` も見る。
 - zsh / Git / Neovim の設定ファイルは macOS と同一。Homebrew の初期化は `/opt/homebrew` と `/usr/local` の存在チェックで囲んであるので、WSL では何もしない。
 - `chezmoi apply` は設定ファイルを置くだけ。パッケージは `scripts/bootstrap.sh --apply` で、明示的に入れる。
