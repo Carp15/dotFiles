@@ -74,7 +74,9 @@ section "Platform"
 case "$platform" in
   macos)
     printf '  macOS %s (%s)\n' "$(sw_vers -productVersion 2>/dev/null)" "$(uname -m)"
-    steps="homebrew brew_bundle mise_tools claude codex"
+    # Codex CLI is a Brewfile cask on macOS, so brew_bundle installs it; the
+    # official-installer step below is for WSL only.
+    steps="homebrew brew_bundle mise_tools claude"
     ;;
   wsl)
     distro="$(dotfiles_distro_id)"
@@ -325,14 +327,7 @@ plan_claude() { plan_official claude; }
 apply_claude() { install_official claude; }
 
 title_codex="Codex CLI"
-check_codex() {
-  check_official codex
-  # The macOS owner of Codex CLI is undecided (docs/packages.md); bootstrap
-  # does not choose one.
-  if [ "$platform" = "macos" ] && [ "$step_state" != "ok" ]; then
-    step_state=manual step_detail="owner on macOS is pending (docs/packages.md); install it yourself"
-  fi
-}
+check_codex() { check_official codex; }
 plan_codex() { plan_official codex; }
 apply_codex() { install_official codex; }
 

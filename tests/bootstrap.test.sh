@@ -121,8 +121,32 @@ mark_done "$W" mise mise-tools claude codex
 out="$(bs_run "$W")"
 rc=$?
 check "bootstrap dry run (macOS, everything installed): all ok" 0 "$rc" "$out" \
-  '^  ok +Brewfile' '^  ok +Codex CLI' '0 step\(s\) to run'
+  '^  ok +Brewfile' '^  ok +Claude Code' '0 step\(s\) to run'
 [ ! -s "$W/calls" ] && ok "bootstrap dry run (macOS): no commands run" || ng "macOS dry run ran commands" "$(cat "$W/calls")"
+# Codex CLI is a Brewfile cask on macOS: no separate step, no official installer.
+printf '%s\n' "$out" | grep -q 'Codex CLI' && ng "macOS plan still lists a Codex CLI step" "$out" ||
+  ok "bootstrap (macOS): Codex CLI is left to the Brewfile, no separate step"
+
+# macOS without Codex: brew bundle (which declares cask "codex") installs it,
+# and the official Codex installer is never downloaded.
+W="$TEST_TMP/bs-macos-no-codex"
+bs_machine "$W" macos
+stub "$W/bin/brew" 'W="$HOME/.."
+case "$2" in
+  check) [ -e "$W/brew-done" ] ;;
+  install) echo "brew $*" >>"$W/calls"; touch "$W/brew-done"; printf "#!/bin/sh\n" >"$HOME/.local/bin/codex"; chmod +x "$HOME/.local/bin/codex" ;;
+esac'
+mark_done "$W" mise mise-tools claude
+out="$(bs_run "$W" --apply)"
+rc=$?
+got="$(bs_calls "$W")"
+[ "$rc" = 0 ] && [ "$got" = "brew bundle install --file $REPO/packages/macos/Brewfile --no-upgrade;" ] &&
+  ! printf '%s' "$got" | grep -q 'chatgpt.com/codex' &&
+  ok "bootstrap --apply (macOS, no Codex): brew bundle installs it, no official installer" ||
+  ng "macOS without Codex (exit $rc)" "$got
+$out"
+grep -q '^cask "codex"$' "$REPO/packages/macos/Brewfile" && ok "Brewfile declares cask \"codex\"" ||
+  ng "Brewfile does not declare cask \"codex\""
 
 # --- --apply against stubs ---------------------------------------------------
 

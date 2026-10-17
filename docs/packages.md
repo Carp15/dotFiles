@@ -18,7 +18,7 @@
 | OS パッケージ・CLI | Homebrew（`packages/macos/Brewfile`） | apt（`packages/wsl/apt.txt`）。apt では不十分な CLI は mise（`home/dot_config/mise/conf.d/wsl.toml`） | winget（基本環境は `packages/windows/winget.json`、任意のツールは `winget-<group>.json`） |
 | GUI アプリ | Homebrew Cask（同 Brewfile） | – | winget（同 winget.json） |
 | 開発ランタイム | mise（`home/dot_config/mise/config.toml`。Java は `temurin-21`） | mise（同じファイル） | 原則不要（WSL 側を使う） |
-| 公式 installer 推奨の CLI | 公式 installer（Claude Code は導入済み） | 公式 installer（mise、Claude Code、Codex CLI） | 原則不要 |
+| 公式 installer 推奨の CLI | 公式 installer（Claude Code）。Codex CLI は Homebrew cask（Brewfile の `cask "codex"`） | 公式 installer（mise、Claude Code、Codex CLI） | 原則不要 |
 | 設定ファイル | chezmoi（`home/`）・symlink（`config/nvim/`） | 同左 | chezmoi（Git ignore、PowerShell profile、Windows Terminal fragment。[Windows](windows.md)） |
 | 必須コマンドの宣言 | `packages/commands/common.txt` + `macos.txt` | `common.txt` + `wsl.txt` | `windows.txt` + winget.json（任意のグループは `windows-<group>.txt` + `winget-<group>.json`。`--with <group>` のときだけ必須） |
 
@@ -87,7 +87,7 @@ macOS と WSL は `scripts/bootstrap.sh`、Windows native は `scripts/bootstrap
 
 | 環境 | `--apply` の順序 |
 | --- | --- |
-| macOS | Homebrew の確認（無ければ停止）→ `brew bundle install --no-upgrade` → `mise install` → Claude Code（無ければ）→ Codex CLI は担当が保留中のため案内だけ |
+| macOS | Homebrew の確認（無ければ停止）→ `brew bundle install --no-upgrade`（Codex CLI はここで cask として入る）→ `mise install` → Claude Code（無ければ） |
 | WSL (Ubuntu) | apt（不足分だけ）→ mise（公式 installer）→ `mise install` → Claude Code → Codex CLI |
 | Windows native | `winget.json` の順に、未導入のものだけ `winget install --id <ID> --exact --source winget --no-upgrade`（PowerShell 7 → Windows Terminal → Git → chezmoi）。`--with android` を付けたときだけ、続けて Android Studio。規約への同意は自動化しない |
 
@@ -149,12 +149,11 @@ mise は `~/.config/mise/config.toml` と `~/.config/mise/conf.d/*.toml` をど�
 
 | 項目 | 現状 | 保留の理由 |
 | --- | --- | --- |
-| `cask "antigravity-cli"` | 導入済み | 手動配置の `~/.local/bin/agy` が cask の binary より PATH で先に来る。どちらを正とするか未決定 |
-| `cask "codex"` | 導入済み | Codex CLI を公式 standalone installer へ移行する可能性がある。`commands/common.txt` では必須なので、担当が決まるまで新規 Mac では個別に導入する |
-| `cask "codex-app"` | 記録はあるが `/Applications/Codex.app` がない | 状態が不整合 |
-| `tap "stablyai/orca"` / `cask "orca"` | 導入済み（third-party tap、`trusted: true`） | Brewfile に宣言すると tap への信頼も宣言することになる |
+| `cask "antigravity-cli"` | 導入済み（1.1.17。最新は 1.3.3） | 手動配置の `~/.local/bin/agy`（自分で更新する。2026-10-17 時点で 1.4.0）が PATH で先に来る。2026-10-17 に手動版を退避して cask 版へ一本化しようとしたが、cask 版 1.1.17 が `--version` / `--help` に応答しなかったため元に戻した。cask の更新と宣言、手動版との一本化は未決定 |
+| `cask "codex-app"` | 記録は `/Applications/Codex.app` を想定しているが、そこには無い | 使用中の Codex app の実体は `/Applications/ChatGPT.app`（bundle id `com.openai.codex`、app 自身が更新する）。cask を宣言・更新すると Codex.app が二重に入る。cask の uninstall は `quit com.openai.codex` で ChatGPT.app を終了させ、`--zap` は app の data を消すため、整理は app を終了してから `--zap` なしで行う |
+| `tap "stablyai/orca"` / `cask "orca"` | 導入済み・使用中（削除対象ではない）。tap は Untrusted、cask は個別に trusted | Brewfile に宣言すると、新しい Mac でも third-party tap を信頼することになる。Orca は `~/.claude/settings.json` と `~/.codex/hooks.json` に hook を入れ、起動した shell に PATH を渡す |
 | `cask "intellij-idea"` | Caskroom に記録だけがあり app がない | 壊れている。Toolbox と直接導入のどちらにするか未決定 |
-| `go "golang.org/x/tools/gopls"` など | `brew bundle dump` が Go のパッケージを出力した | Go 本体は mise の担当。gopls の担当（`go install` / Mason）が未決定 |
+| `go "golang.org/x/tools/gopls"` など | `brew bundle dump` が出力する `go` の3件 | Homebrew の管理物ではない。Go は Homebrew ではなく mise の担当で、mise が `GOBIN` を使用中の Go の `bin` にしているため、bundle がそこにある `go` / `gofmt` / `gopls` を列挙するだけ。Brewfile には宣言しない。`gopls` は Go 1.26.3 の中にあり、Go を更新すると見えなくなるので、担当（mise の go backend など）が未決定 |
 | Claude.app、ChatGPT、Brave、Chrome、Logi Options+ | 手動導入 | cask で管理し直すと既存 app の扱いに影響する |
 | Xcode | App Store | `mas` を導入するか未決定 |
 | WSL のコンテナ CLI | – | Podman と Docker Engine のどちらにするか未決定（`commands/wsl.txt` に未記載。Phase 2 の対象外） |
@@ -165,10 +164,10 @@ mise は `~/.config/mise/config.toml` と `~/.config/mise/conf.d/*.toml` をど�
 既存 macOS の挙動を変えないため、記録だけしておきます。Phase 4C で1件ずつ、承認を得てから扱います（2026-10-13 の Phase 4A 調査でも同じ状態）。
 
 - **Java**: 2026-10-15 に macOS も `temurin-21` へ移行し、解消した（[mise](mise.md)）。切り戻し用に旧 JDK の openjdk 21.0.2 を残しており、削除は未実施。
-- **npm**: 通常の login shell では、宣言どおり mise の `npm 11.15.0` が node 同梱の npm より先に来る（2026-10-11 に確認）。Phase 0 の棚卸しで「node 同梱の npm（11.17.0）が先に来る」としたのは、Orca が PATH の先頭に `node/24/bin` を注入した環境で調べたためで、dotfiles の問題ではなかった。node 同梱の npm を global 更新した状態が残っている点だけが未整理。
-- **Codex**: brew cask で導入。公式 standalone installer との経路の違い。
-- **Antigravity CLI**: 手動配置の binary と cask の二重導入。
+- **npm**: Node 24.19.0 には npm 11.17.0 が同梱されている（nodejs.org の配布一覧で確認。global 更新したものではない）。通常の login shell では、mise で宣言した `npm 11.15.0` が PATH で先に来るため、同梱版より古い 11.15.0 が使われている。Orca が PATH の先頭に `node/24/bin` を渡す shell では同梱の 11.17.0 が使われる。npm の宣言を外して同梱版に任せるかは未決定（mise の設定は WSL にも配置される）。
+- **Codex**: macOS の Codex CLI は Homebrew cask で管理し、2026-10-17 に Brewfile へ `cask "codex"` を宣言した（WSL は公式 installer）。Codex app は上の保留事項のとおり、cask の記録と実体が一致していない。
+- **Antigravity CLI**: 手動配置の binary と cask の二重導入が続いている。`~/.local/bin/agy` は 1.4.0、Homebrew cask 版（`/opt/homebrew/bin/agy`）は 1.1.17 で、PATH では 1.4.0 が優先される。手動版は自分で更新し、2026-10-17 の確認中に 1.0.13 から 1.4.0 へ更新された。その際に残った 1.0.13 の退避ファイル（`~/.local/bin/agy.disabled-20261017.<timestamp>.old`）は、同日 23:35 頃に消失した。同じ時刻に `~/.gemini/antigravity-cli` の状態ファイルが更新され、直後（23:36）に同 CLI のクラッシュログが出ているが、削除の原因と起動元は特定できていない。cask 版 1.1.17 は `--version` / `--help` に応答しなかった。cask 版への一本化は保留中。
 - **IntelliJ**: 壊れた cask の記録。
 - **PATH**: 起動元アプリ（Orca）経由の環境に、存在しない path、相対 path、`node/24/bin` が先頭に入る。login shell 自体の PATH は正常。`scripts/doctor.sh` はこの環境で実行すると、相対 path を error として exit 1 を返す。
-- **mise**: どの設定からも参照されていない古い version が残っている（dotnet、go 1.25.1 / 1.26.2、node 22 / 24.14.1、pnpm 2件、python 3.11、uv。`mise prune --dry-run` で確認できる）。Java の移行の後に整理する。
+- **mise**: 未使用だった go 1.25.1 / 1.26.2、node 24.14.1、pnpm 10.33.0 は 2026-10-17 に削除した（`mise prune --tools go node pnpm`）。node 22.23.1、pnpm 10.12.4、python 3.11.15、uv 0.11.14 は project が使っている。dotnet 10.0.300 は用途が不明なため保留、Java 21.0.2 は切り戻し用に残している。
 - **手動 binary**: `~/.local/bin/omp`、`/usr/local/bin/docker-compose` は、どの manager の管理下にもない。`/usr/local/bin/apm` は Microsoft APM（Agent Package Manager）で、Skills・Agents を `~/.apm` から配布している。本体の導入方法は Phase 4D で決める。
