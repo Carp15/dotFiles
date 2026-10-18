@@ -18,7 +18,7 @@
 | OS パッケージ・CLI | Homebrew（`packages/macos/Brewfile`） | apt（`packages/wsl/apt.txt`）。apt では不十分な CLI は mise（`home/dot_config/mise/conf.d/wsl.toml`） | winget（基本環境は `packages/windows/winget.json`、任意のツールは `winget-<group>.json`） |
 | GUI アプリ | Homebrew Cask（同 Brewfile） | – | winget（同 winget.json） |
 | 開発ランタイム | mise（`home/dot_config/mise/config.toml`。Java は `temurin-21`） | mise（同じファイル） | 原則不要（WSL 側を使う） |
-| 公式 installer 推奨の CLI | 公式 installer（Claude Code）。Codex CLI は Homebrew cask（Brewfile の `cask "codex"`） | 公式 installer（mise、Claude Code、Codex CLI） | 原則不要 |
+| 公式 installer 推奨の CLI | 公式 installer（Claude Code、Antigravity CLI）。Codex CLI は Homebrew cask（Brewfile の `cask "codex"`） | 公式 installer（mise、Claude Code、Codex CLI） | 原則不要 |
 | 設定ファイル | chezmoi（`home/`）・symlink（`config/nvim/`） | 同左 | chezmoi（Git ignore、PowerShell profile、Windows Terminal fragment。[Windows](windows.md)） |
 | 必須コマンドの宣言 | `packages/commands/common.txt` + `macos.txt` | `common.txt` + `wsl.txt` | `windows.txt` + winget.json（任意のグループは `windows-<group>.txt` + `winget-<group>.json`。`--with <group>` のときだけ必須） |
 
@@ -99,6 +99,25 @@ bootstrap が待つのは、各ステップが依存する chezmoi の target �
 
 既存の Mac では、bootstrap の dry-run で全ステップが `ok` になることを確認済みです（2026-10-13）。
 
+### Antigravity CLI（macOS、手動）
+
+Antigravity CLI（`agy`）の管理元は Google の公式 installer で、`~/.local/bin/agy` に入ります（2026-10-18 時点で 1.4.2）。Antigravity app は Brewfile の `cask "antigravity"` で管理し、CLI は Brewfile にも bootstrap にも入れていません。CLI の Homebrew cask（`antigravity-cli`）は 2026-10-18 に uninstall しました（後述）。
+
+新しい Mac では、`chezmoi apply` で `~/.local/bin` が PATH に入った後に、公式 installer を取得してから実行します。URL は公式 docs の `curl -fsSL https://antigravity.google/cli/install.sh | bash` と同じです。
+
+```bash
+curl -fsSL https://antigravity.google/cli/install.sh -o /tmp/agy-install.sh
+less /tmp/agy-install.sh            # 任意: 内容を確認する
+bash /tmp/agy-install.sh
+chezmoi status                      # shell の起動ファイルが書き換えられていないか確認する
+```
+
+- **shell 設定の変更に注意**: installer は最後に `agy install`（「Configuring shell environment...」）を実行します。これが chezmoi 管理の `~/.zshrc` などに PATH の行を追記するかどうかは未確認です。`chezmoi status` に差分が出たら、`chezmoi add` で取り込まず、`chezmoi diff` で内容を確認して不要な行を戻します（`~/.local/bin` は dotfiles の zprofile / zshrc がすでに PATH に入れています）。
+- **quarantine**: installer は macOS で `com.apple.quarantine` 属性を外します。
+- **自己更新**: `agy` は起動するたびにバックグラウンドで更新を確認し（前回から 15 分以内なら省略）、`~/.local/bin/agy` を置き換えます。状態は `~/.gemini/antigravity-cli/updater/update_status.json` に残ります。置き換えのときに `~/.local/bin/agy.<数字>.old` が作られることがありますが、CLI 自身が後で消すことがあるため、永続的なバックアップとはみなしません。動作確認のために `agy` を実行すると更新が走ることがあるので、バイナリを調べるだけなら実行せずに署名やファイル情報を見ます。
+- **自己更新の無効化**: バイナリには `AGY_CLI_DISABLE_AUTO_UPDATE` という環境変数が含まれていますが、公開 docs には記載がなく、値の仕様は未確認です。設定していません。
+- **cask を使わない理由**: 公式 installer 版と cask 版の二重導入になっていたうえ、cask 版（1.1.17）は 2026-10-17 の確認で `--version` / `--help` に応答しませんでした（原因は未特定のままで、cask を入れ直すと再発する可能性があります）。また自己更新が Caskroom 内のファイルを書き換えると、Homebrew の記録とずれます。uninstall は `HOMEBREW_NO_AUTOREMOVE=1` を付け、`--zap` なしで行いました。前者は、`brew uninstall` が既定で、使われていない formula まで autoremove するのを止めるためです（このときは `openssl@3` が対象になっていた）。後者は、`--zap` が `~/.gemini/antigravity-cli`（CLI の設定・会話・状態）を消すためです。
+
 ## winget ID
 
 `winget.json` には、[microsoft/winget-pkgs](https://github.com/microsoft/winget-pkgs) に manifest が実在し、現行 version が公開されていることを 2026-10-10 に確認した ID だけを記載しています。
@@ -149,7 +168,6 @@ mise は `~/.config/mise/config.toml` と `~/.config/mise/conf.d/*.toml` をど�
 
 | 項目 | 現状 | 保留の理由 |
 | --- | --- | --- |
-| `cask "antigravity-cli"` | 導入済み（1.1.17。最新は 1.3.3） | 手動配置の `~/.local/bin/agy`（自分で更新する。2026-10-17 時点で 1.4.0）が PATH で先に来る。2026-10-17 に手動版を退避して cask 版へ一本化しようとしたが、cask 版 1.1.17 が `--version` / `--help` に応答しなかったため元に戻した。cask の更新と宣言、手動版との一本化は未決定 |
 | `cask "codex-app"` | 記録は `/Applications/Codex.app` を想定しているが、そこには無い | 使用中の Codex app の実体は `/Applications/ChatGPT.app`（bundle id `com.openai.codex`、app 自身が更新する）。cask を宣言・更新すると Codex.app が二重に入る。cask の uninstall は `quit com.openai.codex` で ChatGPT.app を終了させ、`--zap` は app の data を消すため、整理は app を終了してから `--zap` なしで行う |
 | `tap "stablyai/orca"` / `cask "orca"` | 導入済み・使用中（削除対象ではない）。tap は Untrusted、cask は個別に trusted | Brewfile に宣言すると、新しい Mac でも third-party tap を信頼することになる。Orca は `~/.claude/settings.json` と `~/.codex/hooks.json` に hook を入れ、起動した shell に PATH を渡す |
 | `cask "intellij-idea"` | Caskroom に記録だけがあり app がない | 壊れている。Toolbox と直接導入のどちらにするか未決定 |
@@ -166,7 +184,7 @@ mise は `~/.config/mise/config.toml` と `~/.config/mise/conf.d/*.toml` をど�
 - **Java**: 2026-10-15 に macOS も `temurin-21` へ移行し、解消した（[mise](mise.md)）。切り戻し用に旧 JDK の openjdk 21.0.2 を残しており、削除は未実施。
 - **npm**: Node 24.19.0 には npm 11.17.0 が同梱されている（nodejs.org の配布一覧で確認。global 更新したものではない）。通常の login shell では、mise で宣言した `npm 11.15.0` が PATH で先に来るため、同梱版より古い 11.15.0 が使われている。Orca が PATH の先頭に `node/24/bin` を渡す shell では同梱の 11.17.0 が使われる。npm の宣言を外して同梱版に任せるかは未決定（mise の設定は WSL にも配置される）。
 - **Codex**: macOS の Codex CLI は Homebrew cask で管理し、2026-10-17 に Brewfile へ `cask "codex"` を宣言した（WSL は公式 installer）。Codex app は上の保留事項のとおり、cask の記録と実体が一致していない。
-- **Antigravity CLI**: 手動配置の binary と cask の二重導入が続いている。`~/.local/bin/agy` は 1.4.0、Homebrew cask 版（`/opt/homebrew/bin/agy`）は 1.1.17 で、PATH では 1.4.0 が優先される。手動版は自分で更新し、2026-10-17 の確認中に 1.0.13 から 1.4.0 へ更新された。その際に残った 1.0.13 の退避ファイル（`~/.local/bin/agy.disabled-20261017.<timestamp>.old`）は、同日 23:35 頃に消失した。同じ時刻に `~/.gemini/antigravity-cli` の状態ファイルが更新され、直後（23:36）に同 CLI のクラッシュログが出ているが、削除の原因と起動元は特定できていない。cask 版 1.1.17 は `--version` / `--help` に応答しなかった。cask 版への一本化は保留中。
+- **Antigravity CLI**: 公式 installer 版と cask 版の二重導入は、2026-10-18 に cask 版を uninstall して解消した（「導入」の「Antigravity CLI（macOS、手動）」を参照）。残っている問題は2つ。`agy` を数分から数十分おきに起動しているもの（2026-10-17〜18 に、対話セッションとして起動した記録がある）が特定できていない。cask 版 1.1.17 が応答しなかった原因も特定できていない（cask を削除しただけで、原因は解決していない）。
 - **IntelliJ**: 壊れた cask の記録。
 - **PATH**: 起動元アプリ（Orca）経由の環境に、存在しない path、相対 path、`node/24/bin` が先頭に入る。login shell 自体の PATH は正常。`scripts/doctor.sh` はこの環境で実行すると、相対 path を error として exit 1 を返す。
 - **mise**: 未使用だった go 1.25.1 / 1.26.2、node 24.14.1、pnpm 10.33.0 は 2026-10-17 に削除した（`mise prune --tools go node pnpm`）。node 22.23.1、pnpm 10.12.4、python 3.11.15、uv 0.11.14 は project が使っている。dotnet 10.0.300 は用途が不明なため保留、Java 21.0.2 は切り戻し用に残している。

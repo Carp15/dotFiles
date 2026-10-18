@@ -58,11 +58,6 @@ cask "visual-studio-code"
 #
 # Each needs a decision before it is declared. See "保留事項" in docs/packages.md.
 #
-# Antigravity CLI: installed (1.1.17), but a manually installed, self-updating
-# ~/.local/bin/agy still comes first on PATH. On 2026-10-17 the cask binary did
-# not answer --version / --help, so the manual copy stays in use for now.
-# cask "antigravity-cli"
-#
 # Codex app: the app in use is /Applications/ChatGPT.app (bundle id
 # com.openai.codex, updates itself). The cask record expects Codex.app, which
 # is not there, so declaring it would install a second copy.
@@ -76,3 +71,8 @@ cask "visual-studio-code"
 # Not declared at all: intellij-idea (cask record without an app), and the
 # `go` entries from `brew bundle dump`: those are the binaries in mise's GOBIN
 # (Go is owned by mise, not Homebrew).
+#
+# Antigravity: the app is the cask "antigravity" above. The Antigravity CLI
+# (`agy`) is owned by Google's official installer (~/.local/bin/agy, which
+# updates itself) and is deliberately not declared here; its cask
+# "antigravity-cli" was uninstalled on 2026-10-18 (docs/packages.md).
