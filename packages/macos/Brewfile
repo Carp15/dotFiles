@@ -58,11 +58,6 @@ cask "visual-studio-code"
 #
 # Each needs a decision before it is declared. See "保留事項" in docs/packages.md.
 #
-# Codex app: the app in use is /Applications/ChatGPT.app (bundle id
-# com.openai.codex, updates itself). The cask record expects Codex.app, which
-# is not there, so declaring it would install a second copy.
-# cask "codex-app"
-#
 # Orca: in use (not a removal candidate). It comes from a third-party tap, so
 # declaring it also declares trust in that tap on every new Mac.
 # tap "stablyai/orca"
@@ -76,3 +71,9 @@ cask "visual-studio-code"
 # (`agy`) is owned by Google's official installer (~/.local/bin/agy, which
 # updates itself) and is deliberately not declared here; its cask
 # "antigravity-cli" was uninstalled on 2026-10-18 (docs/packages.md).
+#
+# Codex: the CLI is cask "codex" above. The Codex app in use is the existing
+# /Applications/ChatGPT.app (bundle id com.openai.codex), which updates itself
+# and is kept as it is. Cask "codex-app" is deliberately not declared: it
+# expects /Applications/Codex.app, so it would install a second copy. Its stale
+# record was removed on 2026-10-25 (docs/packages.md).

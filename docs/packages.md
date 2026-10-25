@@ -66,6 +66,8 @@ brew bundle list  --file packages/macos/Brewfile                 # 宣言の一�
 
 `brew bundle cleanup` は実行しません。Brewfile には、導入済みだが保留中で宣言していない cask があり（後述）、cleanup すると削除対象になるためです。
 
+`brew bundle check` は既定で、更新が出ている cask も「満たしていない」と数えます。2026-10-25 には、導入済みの cask 5件（`codex`、`cmux`、`obsidian`、`podman-desktop`、`visual-studio-code`）に新しい版が出ていたため FAIL になり、更新状態を見ない `brew bundle check --no-upgrade` は PASS でした。宣言どおりに入っているかだけを見るときは `--no-upgrade` を使います。`scripts/bootstrap.sh` と doctor でどちらの判定を使うかは、次の段階で決めます。
+
 ### WSL
 
 ```bash
@@ -118,6 +120,16 @@ chezmoi status                      # shell の起動ファイルが書き換え
 - **自己更新の無効化**: バイナリには `AGY_CLI_DISABLE_AUTO_UPDATE` という環境変数が含まれていますが、公開 docs には記載がなく、値の仕様は未確認です。設定していません。
 - **cask を使わない理由**: 公式 installer 版と cask 版の二重導入になっていたうえ、cask 版（1.1.17）は 2026-10-17 の確認で `--version` / `--help` に応答しませんでした（原因は未特定のままで、cask を入れ直すと再発する可能性があります）。また自己更新が Caskroom 内のファイルを書き換えると、Homebrew の記録とずれます。uninstall は `HOMEBREW_NO_AUTOREMOVE=1` を付け、`--zap` なしで行いました。前者は、`brew uninstall` が既定で、使われていない formula まで autoremove するのを止めるためです（このときは `openssl@3` が対象になっていた）。後者は、`--zap` が `~/.gemini/antigravity-cli`（CLI の設定・会話・状態）を消すためです。
 
+### Codex app（macOS）
+
+macOS の Codex CLI は Brewfile の `cask "codex"` で管理しています（この管理方法は変えていません）。Codex app は、既にある `/Applications/ChatGPT.app`（bundle id `com.openai.codex`、Sparkle で app 自身が更新する）をそのまま使い、Brewfile には `cask "codex-app"` を宣言しません。`codex-app` は `/Applications/Codex.app` を前提にしているため、宣言・更新すると同じ bundle id の app がもう1つ入ります。Homebrew の `codex-app` と `codex` は別の管理対象です。
+
+2026-10-25 に、存在しない `/Applications/Codex.app` に対応していた `codex-app` の古い記録（`/opt/homebrew/Caskroom/codex-app`）を削除しました。ChatGPT.app 本体と Codex のユーザーデータ（`~/Library/Application Support/Codex`、`~/.codex` など）は残しています。
+
+- **通常の uninstall は使わなかった**: `codex-app` の uninstall は最初に `quit com.openai.codex` を実行するため、動いている ChatGPT.app を終了させてしまいます。さらに `/Applications/Codex.app` が無いと、その後の app の処理が CaskError で止まり、記録は残ったままになります。
+- **実行したこと**: ChatGPT.app を手動で終了したことを確かめ（`lsappinfo` で `com.openai.codex` の登録が無いこと）、Caskroom の記録を退避したうえで、`HOMEBREW_NO_AUTOREMOVE=1 HOMEBREW_NO_AUTO_UPDATE=1 brew uninstall --cask --force codex-app` を実行しました。`--force` は、リンク切れの `Caskroom/.../Codex.app` を扱うためです。Homebrew 7.0.9 のソースで、`--force` によって変わるのが「`/Applications/Codex.app` が無くてもエラーにしない」ことと「`Caskroom/codex-app` だけを削除する」ことだけで、ChatGPT.app やユーザーデータが対象にならないことを事前に確認しました。
+- **使わなかったもの**: `--zap` は使っていません（Codex の app data、cache、`~/.codex` などが対象になるため）。`HOMEBREW_NO_AUTOREMOVE=1` で、無関係な formula の自動削除を止めました。
+
 ## winget ID
 
 `winget.json` には、[microsoft/winget-pkgs](https://github.com/microsoft/winget-pkgs) に manifest が実在し、現行 version が公開されていることを 2026-10-10 に確認した ID だけを記載しています。
@@ -168,11 +180,10 @@ mise は `~/.config/mise/config.toml` と `~/.config/mise/conf.d/*.toml` をど�
 
 | 項目 | 現状 | 保留の理由 |
 | --- | --- | --- |
-| `cask "codex-app"` | 記録は `/Applications/Codex.app` を想定しているが、そこには無い | 使用中の Codex app の実体は `/Applications/ChatGPT.app`（bundle id `com.openai.codex`、app 自身が更新する）。cask を宣言・更新すると Codex.app が二重に入る。cask の uninstall は `quit com.openai.codex` で ChatGPT.app を終了させ、`--zap` は app の data を消すため、整理は app を終了してから `--zap` なしで行う |
 | `tap "stablyai/orca"` / `cask "orca"` | 導入済み・使用中（削除対象ではない）。tap は Untrusted、cask は個別に trusted | Brewfile に宣言すると、新しい Mac でも third-party tap を信頼することになる。Orca は `~/.claude/settings.json` と `~/.codex/hooks.json` に hook を入れ、起動した shell に PATH を渡す |
 | `cask "intellij-idea"` | Caskroom に記録だけがあり app がない | 壊れている。Toolbox と直接導入のどちらにするか未決定 |
 | `go "golang.org/x/tools/gopls"` など | `brew bundle dump` が出力する `go` の3件 | Homebrew の管理物ではない。Go は Homebrew ではなく mise の担当で、mise が `GOBIN` を使用中の Go の `bin` にしているため、bundle がそこにある `go` / `gofmt` / `gopls` を列挙するだけ。Brewfile には宣言しない。`gopls` は Go 1.26.3 の中にあり、Go を更新すると見えなくなるので、担当（mise の go backend など）が未決定 |
-| Claude.app、ChatGPT、Brave、Chrome、Logi Options+ | 手動導入 | cask で管理し直すと既存 app の扱いに影響する |
+| Claude.app、Brave、Chrome、Logi Options+ | 手動導入 | cask で管理し直すと既存 app の扱いに影響する（ChatGPT.app は「Codex app（macOS）」のとおり、宣言せずに使い続ける） |
 | Xcode | App Store | `mas` を導入するか未決定 |
 | WSL のコンテナ CLI | – | Podman と Docker Engine のどちらにするか未決定（`commands/wsl.txt` に未記載。Phase 2 の対象外） |
 | Windows の IntelliJ | – | `JetBrains.IntelliJIDEA` と `JetBrains.Toolbox` のどちらにするか未決定 |
@@ -183,7 +194,7 @@ mise は `~/.config/mise/config.toml` と `~/.config/mise/conf.d/*.toml` をど�
 
 - **Java**: 2026-10-15 に macOS も `temurin-21` へ移行し、解消した（[mise](mise.md)）。切り戻し用に旧 JDK の openjdk 21.0.2 を残しており、削除は未実施。
 - **npm**: Node 24.19.0 には npm 11.17.0 が同梱されている（nodejs.org の配布一覧で確認。global 更新したものではない）。通常の login shell では、mise で宣言した `npm 11.15.0` が PATH で先に来るため、同梱版より古い 11.15.0 が使われている。Orca が PATH の先頭に `node/24/bin` を渡す shell では同梱の 11.17.0 が使われる。npm の宣言を外して同梱版に任せるかは未決定（mise の設定は WSL にも配置される）。
-- **Codex**: macOS の Codex CLI は Homebrew cask で管理し、2026-10-17 に Brewfile へ `cask "codex"` を宣言した（WSL は公式 installer）。Codex app は上の保留事項のとおり、cask の記録と実体が一致していない。
+- **Codex**: macOS の Codex CLI は Homebrew cask で管理し、2026-10-17 に Brewfile へ `cask "codex"` を宣言した（WSL は公式 installer）。Codex app の cask の記録と実体の不一致は、2026-10-25 に `codex-app` の古い記録を削除して解消した（「導入」の「Codex app（macOS）」を参照）。
 - **Antigravity CLI**: 公式 installer 版と cask 版の二重導入は、2026-10-18 に cask 版を uninstall して解消した（「導入」の「Antigravity CLI（macOS、手動）」を参照）。残っている問題は2つ。`agy` を数分から数十分おきに起動しているもの（2026-10-17〜18 に、対話セッションとして起動した記録がある）が特定できていない。cask 版 1.1.17 が応答しなかった原因も特定できていない（cask を削除しただけで、原因は解決していない）。
 - **IntelliJ**: 壊れた cask の記録。
 - **PATH**: 起動元アプリ（Orca）経由の環境に、存在しない path、相対 path、`node/24/bin` が先頭に入る。login shell 自体の PATH は正常。`scripts/doctor.sh` はこの環境で実行すると、相対 path を error として exit 1 を返す。
