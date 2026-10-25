@@ -198,10 +198,13 @@ title_brew_bundle="Brewfile (packages/macos/Brewfile)"
 check_brew_bundle() {
   if ! command -v brew >/dev/null 2>&1; then
     step_state=blocked step_detail="needs Homebrew"
-  elif HOMEBREW_NO_AUTO_UPDATE=1 brew bundle check --file "$brewfile" >/dev/null 2>&1; then
-    step_state=ok step_detail="all declared formulae and casks are installed"
+  # --no-upgrade matches the install below: bootstrap installs what is missing
+  # and never upgrades, so an installed but outdated package counts as present.
+  # Updates are listed by `brew outdated` and applied separately.
+  elif HOMEBREW_NO_AUTO_UPDATE=1 brew bundle check --no-upgrade --file "$brewfile" >/dev/null 2>&1; then
+    step_state=ok step_detail="all declared formulae and casks are installed (updates are not checked)"
   else
-    step_state=todo step_detail="some declared packages are missing"
+    step_state=todo step_detail="some declared packages are not installed"
   fi
 }
 plan_brew_bundle() {

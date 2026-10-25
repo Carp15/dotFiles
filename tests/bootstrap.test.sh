@@ -148,6 +148,113 @@ $out"
 grep -q '^cask "codex"$' "$REPO/packages/macos/Brewfile" && ok "Brewfile declares cask \"codex\"" ||
   ng "Brewfile does not declare cask \"codex\""
 
+# --- Homebrew: check and install use the same criterion ----------------------
+# bootstrap installs what is missing and never upgrades, so the Brewfile check
+# must ignore updates (--no-upgrade) exactly like the install does. This brew
+# parses its arguments in any order. `bundle check` succeeds when the Brewfile
+# is installed; with $W/brew-outdated present it fails unless --no-upgrade is
+# given, like Homebrew does for an outdated cask. Every check is recorded in
+# $W/brew.check (read-only); `bundle install` and anything else go to $W/calls.
+brew_mock() { # DIR
+  stub "$1/bin/brew" 'W="$HOME/.."
+nu=no file="" prev=""
+for a in "$@"; do
+  case "$a" in
+    --no-upgrade) nu=yes ;;
+    --file=*) file="${a#--file=}" ;;
+  esac
+  [ "$prev" = --file ] && file="$a"
+  prev="$a"
+done
+case "$1:$2" in
+  bundle:check)
+    echo "check file=$file no_upgrade=$nu" >>"$W/brew.check"
+    [ -e "$W/brew-installed" ] || exit 1
+    [ -e "$W/brew-outdated" ] && [ "$nu" = no ] && exit 1
+    exit 0 ;;
+  bundle:install)
+    echo "install file=$file no_upgrade=$nu" >>"$W/calls"
+    touch "$W/brew-installed"
+    exit 0 ;;
+  *) echo "brew $*" >>"$W/calls"; exit 99 ;;
+esac'
+}
+# brew_machine DIR STATE...: a Mac where everything but the Brewfile is done.
+brew_machine() {
+  local W="$1" state
+  shift
+  bs_machine "$W" macos
+  brew_mock "$W"
+  mark_done "$W" mise mise-tools claude
+  : >"$W/brew.check"
+  for state in "$@"; do touch "$W/brew-$state"; done
+}
+brewfile="$REPO/packages/macos/Brewfile"
+brew_dirs=""
+
+# Case A: everything installed and current.
+W="$TEST_TMP/bs-brew-current"
+brew_machine "$W" installed
+brew_dirs="$brew_dirs $W"
+out="$(bs_run "$W")"
+rc=$?
+check "Brewfile (all installed): dry run reports ok" 0 "$rc" "$out" '^  ok +Brewfile'
+out="$(bs_run "$W" --apply)"
+rc=$?
+[ "$rc" = 0 ] && ! grep -q '^install' "$W/calls" && printf '%s\n' "$out" | grep -q 'Nothing to install' &&
+  ok "Brewfile (all installed): --apply does not run brew bundle install" ||
+  ng "Brewfile (all installed): --apply (exit $rc)" "$(cat "$W/calls")
+$out"
+
+# Case B: installed, but a cask is outdated.
+W="$TEST_TMP/bs-brew-outdated"
+brew_machine "$W" installed outdated
+brew_dirs="$brew_dirs $W"
+HOME="$W/home" "$W/bin/brew" bundle check --file "$brewfile" >/dev/null 2>&1
+plain=$?
+HOME="$W/home" "$W/bin/brew" bundle check --file "$brewfile" --no-upgrade >/dev/null 2>&1
+noup=$?
+: >"$W/brew.check"
+[ "$plain" != 0 ] && [ "$noup" = 0 ] && ok "brew mock: outdated cask fails plain check, passes --no-upgrade" ||
+  ng "brew mock: plain=$plain no-upgrade=$noup"
+out="$(bs_run "$W")"
+rc=$?
+check "Brewfile (outdated cask): dry run reports ok, not todo" 0 "$rc" "$out" '^  ok +Brewfile' '0 step\(s\) to run'
+out="$(bs_run "$W" --apply)"
+rc=$?
+[ "$rc" = 0 ] && ! grep -q '^install' "$W/calls" &&
+  ok "Brewfile (outdated cask): --apply does not run brew bundle install, exit 0" ||
+  ng "Brewfile (outdated cask): --apply (exit $rc)" "$(cat "$W/calls")
+$out"
+
+# Case C: something declared is not installed.
+W="$TEST_TMP/bs-brew-missing"
+brew_machine "$W"
+brew_dirs="$brew_dirs $W"
+out="$(bs_run "$W")"
+rc=$?
+check "Brewfile (missing package): dry run reports todo with the no-upgrade install" 0 "$rc" "$out" \
+  '^  todo +Brewfile' 'brew bundle install --file packages/macos/Brewfile --no-upgrade'
+[ ! -s "$W/calls" ] && ok "Brewfile (missing package): dry run runs no install" || ng "dry run installed" "$(cat "$W/calls")"
+: >"$W/brew.check"
+out="$(bs_run "$W" --apply)"
+rc=$?
+installs="$(grep -c '^install' "$W/calls")"
+checks_after="$(awk 'END {print NR}' "$W/brew.check")"
+[ "$rc" = 0 ] && [ "$installs" = 1 ] && [ "$checks_after" -ge 2 ] &&
+  printf '%s\n' "$out" | sed -n '/^Result/,$p' | grep -qE '^  ok +Brewfile' &&
+  ok "Brewfile (missing package): --apply installs once, and the re-check passes" ||
+  ng "Brewfile (missing package): --apply (exit $rc, installs=$installs, checks=$checks_after)" "$(cat "$W/calls")
+$out"
+
+# Case D: every check and install in A-C used the same Brewfile and --no-upgrade.
+records="$(for d in $brew_dirs; do cat "$d/brew.check"; grep -E '^install' "$d/calls"; done)"
+bad="$(printf '%s\n' "$records" | awk -v f="file=$brewfile" 'NF && ($2 != f || $3 != "no_upgrade=yes")')"
+[ -n "$records" ] && [ -z "$bad" ] &&
+  printf '%s\n' "$records" | grep -q '^check' && printf '%s\n' "$records" | grep -q '^install' &&
+  ok "Brewfile: every check and install used the repository Brewfile with --no-upgrade" ||
+  ng "Brewfile: inconsistent brew bundle arguments" "$bad"
+
 # --- --apply against stubs ---------------------------------------------------
 
 W="$TEST_TMP/bs-apply"

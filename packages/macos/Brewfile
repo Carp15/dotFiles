@@ -4,8 +4,13 @@
 # hand. Declaring a package here does not install it: nothing in this repository
 # runs `brew bundle` automatically, and `chezmoi apply` never installs packages.
 #
-#   brew bundle check --file packages/macos/Brewfile --verbose   # read-only
-#   brew bundle list  --file packages/macos/Brewfile             # read-only
+#   brew bundle check --no-upgrade --file packages/macos/Brewfile --verbose   # read-only
+#   brew bundle list  --file packages/macos/Brewfile                          # read-only
+#   brew outdated                                                             # update candidates
+#
+# scripts/bootstrap.sh --apply installs only what is missing (`brew bundle
+# install --no-upgrade`) and never upgrades an installed formula or cask, so its
+# check uses --no-upgrade too. Updates are applied separately, with approval.
 #
 # Do not run `brew bundle cleanup` against this file: the commented-out entries
 # below are still installed on purpose. See docs/packages.md for ownership rules.

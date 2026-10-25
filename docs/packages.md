@@ -60,13 +60,21 @@ packages/
 
 ```bash
 ./scripts/doctor.sh                                              # 必須コマンドの存在
-brew bundle check --file packages/macos/Brewfile --verbose       # 宣言との差分
-brew bundle list  --file packages/macos/Brewfile                 # 宣言の一覧
+brew bundle check --no-upgrade --file packages/macos/Brewfile --verbose   # 宣言どおりに入っているか
+brew outdated                                                             # 更新候補
+brew bundle list  --file packages/macos/Brewfile                          # 宣言の一覧
 ```
 
 `brew bundle cleanup` は実行しません。Brewfile には、導入済みだが保留中で宣言していない cask があり（後述）、cleanup すると削除対象になるためです。
 
-`brew bundle check` は既定で、更新が出ている cask も「満たしていない」と数えます。2026-10-25 には、導入済みの cask 5件（`codex`、`cmux`、`obsidian`、`podman-desktop`、`visual-studio-code`）に新しい版が出ていたため FAIL になり、更新状態を見ない `brew bundle check --no-upgrade` は PASS でした。宣言どおりに入っているかだけを見るときは `--no-upgrade` を使います。`scripts/bootstrap.sh` と doctor でどちらの判定を使うかは、次の段階で決めます。
+Homebrew の確認と更新は、次のように分けます（2026-10-26 に決定）。
+
+- **bootstrap は不足分だけを入れる**: `scripts/bootstrap.sh --apply` は `brew bundle install --no-upgrade` で、宣言にあって未導入のものだけを入れます。導入済みの formula や cask は、古くても更新しません。
+- **日常の整合性確認は `brew bundle check --no-upgrade`**: 宣言どおりに入っているかだけを見ます。bootstrap の Brewfile の判定も同じ `--no-upgrade` 付きで、install と同じ基準にしています。
+- **更新候補の確認は `brew outdated`**: `--no-upgrade` なしの `brew bundle check` は、更新が出ている cask も「満たしていない」と数えるため、日常の確認には使いません（2026-10-25 は、導入済みの cask 5件に新しい版が出ていただけで FAIL になりました）。
+- **実際の更新は別に承認して行う**: `brew upgrade` は bootstrap にも doctor にも含めず、承認を得てから手で実行します。
+
+doctor は `brew bundle` を呼びません。
 
 ### WSL
 
