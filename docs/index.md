@@ -9,6 +9,7 @@
 - [Packages](packages.md) — OS 別のパッケージ宣言、必須コマンド、導入経路の方針
 - [mise](mise.md) — 現在管理するtool version宣言と再現方針
 - [Neovim](neovim.md) — AstroNvim の管理方式と symlink 運用
+- [AI tools](ai-tools.md) — Claude Code・Codex などの AI 開発ツール設定の管理責務、Git 管理対象と除外対象、未確認事項
 - [macOS](macos.md) — 現在の主要環境
 - [Linux](linux.md) — Linux での差分方針
 - [WSL](wsl.md) — WSL2 Ubuntu の構築手順と macOS との差分
