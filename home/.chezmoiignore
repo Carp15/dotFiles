@@ -25,6 +25,14 @@
 .zprofile
 .config/mise
 {{- /*
+  Shared AI instructions (docs/ai-tools.md): ~/.claude/CLAUDE.md imports
+  ~/.codex/AGENTS.md with "@~/", which is unverified on Windows, so neither
+  file is deployed there yet. The directories are listed so that chezmoi
+  creates nothing under them; existing files there are never touched.
+*/}}
+.codex
+.claude
+{{- /*
   The $PROFILE loader under ~/Documents is only right when Documents is not
   redirected (OneDrive). A machine where PowerShell 7 reads its profile from
   elsewhere opts out in its own ~/.config/chezmoi/chezmoi.toml:
