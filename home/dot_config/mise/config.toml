@@ -5,5 +5,6 @@
 [tools]
 go = "1.26.3"
 java = "temurin-21"
+# npm is the copy bundled with each Node.js release and is deliberately not
+# pinned on its own (docs/mise.md).
 node = "24"
-npm = "11.15.0"

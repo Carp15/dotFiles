@@ -99,7 +99,7 @@ chezmoi apply
 
 1. apt：`packages/wsl/apt.txt` のうち未インストールのものだけ（`sudo` のパスワードを聞かれます）
 2. mise：公式 installer（`https://mise.run`）で `~/.local/bin/mise` に入れる
-3. mise のツール：`cd ~ && mise install`（Java、Node、Go、npm、Neovim、gh、ghq、lazygit、fd、tree-sitter、kubectl、helm、Rust）
+3. mise のツール：`cd ~ && mise install`（Java、Node（npm は Node 同梱版）、Go、Neovim、gh、ghq、lazygit、fd、tree-sitter、kubectl、helm、Rust）
 4. Claude Code：公式 native installer（`https://claude.ai/install.sh`）
 5. Codex CLI：公式 installer（`https://chatgpt.com/codex/install.sh`。`CODEX_NON_INTERACTIVE=1` 付き）
 

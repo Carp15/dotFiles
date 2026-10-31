@@ -174,7 +174,8 @@ macOS では当面 IntelliJ IDEA を管理せず、Brewfile にも宣言しま�
 | git、zsh、curl、ripgrep、jq、build-essential、unzip | apt | Ubuntu 24.04 の version で足り、security update が apt で届く |
 | chezmoi | 公式 installer（`get.chezmoi.io`、手動・bootstrap より前） | bootstrap の前提なので、bootstrap では入れられない。checksum を照合し、profile は変更しない。更新は `chezmoi upgrade` |
 | mise | 公式 installer（`mise.run`） | Linux での公式推奨。`mise self-update` が使え、profile は変更しない。PPA は `sudo` と apt source の追加が必要になる |
-| Java / Node / Go / npm | mise（`config.toml`） | macOS と共通の宣言。Java は全 platform で `temurin-21` |
+| Java / Node / Go | mise（`config.toml`） | macOS と共通の宣言。Java は全 platform で `temurin-21` |
+| npm | Node.js 同梱 | mise で独立に固定しない。版は Node.js の版で決まる（[mise](mise.md#npm)） |
 | Neovim | mise（`aqua:neovim/neovim`、`0.12`） | apt は 0.9.5 で、AstroNvim v6 の要件（0.11 以上）を満たさない。公式 release を使う。registry の既定 backend は vfox なので aqua を明示している |
 | gh | mise（`aqua:cli/cli`、`2`） | 公式 release binary を使い、root 権限も apt source の追加も要らない。公式 apt repo も選択肢だが、keyring 管理が増える |
 | ghq / lazygit / tree-sitter | mise（aqua、`1` / `0.66` / `0.27`） | Ubuntu 24.04 の apt にない。公式 release binary を使う |
@@ -200,7 +201,6 @@ mise は `~/.config/mise/config.toml` と `~/.config/mise/conf.d/*.toml` をど�
 | 項目 | 現状 | 保留の理由 |
 | --- | --- | --- |
 | `tap "stablyai/orca"` / `cask "orca"` | 導入済み・使用中（削除対象ではない）。tap は Untrusted、cask は個別に trusted | Brewfile に宣言すると、新しい Mac でも third-party tap を信頼することになる。Orca は `~/.claude/settings.json` と `~/.codex/hooks.json` に hook を入れ、起動した shell に PATH を渡す |
-| `go "golang.org/x/tools/gopls"` など | `brew bundle dump` が出力する `go` の3件 | Homebrew の管理物ではない。Go は Homebrew ではなく mise の担当で、mise が `GOBIN` を使用中の Go の `bin` にしているため、bundle がそこにある `go` / `gofmt` / `gopls` を列挙するだけ。Brewfile には宣言しない。`gopls` は Go 1.26.3 の中にあり、Go を更新すると見えなくなるので、担当（mise の go backend など）が未決定 |
 | Claude.app、Brave、Chrome、Logi Options+ | 手動導入 | cask で管理し直すと既存 app の扱いに影響する（ChatGPT.app は「Codex app（macOS）」のとおり、宣言せずに使い続ける） |
 | Xcode | App Store | `mas` を導入するか未決定 |
 | WSL のコンテナ CLI | – | Podman と Docker Engine のどちらにするか未決定（`commands/wsl.txt` に未記載。Phase 2 の対象外） |
@@ -211,7 +211,7 @@ mise は `~/.config/mise/config.toml` と `~/.config/mise/conf.d/*.toml` をど�
 既存 macOS の挙動を変えないため、記録だけしておきます。Phase 4C で1件ずつ、承認を得てから扱います（2026-10-13 の Phase 4A 調査でも同じ状態）。
 
 - **Java**: 2026-10-15 に macOS も `temurin-21` へ移行し、解消した（[mise](mise.md)）。切り戻し用に旧 JDK の openjdk 21.0.2 を残しており、削除は未実施。
-- **npm**: Node 24.19.0 には npm 11.17.0 が同梱されている（nodejs.org の配布一覧で確認。global 更新したものではない）。通常の login shell では、mise で宣言した `npm 11.15.0` が PATH で先に来るため、同梱版より古い 11.15.0 が使われている。Orca が PATH の先頭に `node/24/bin` を渡す shell では同梱の 11.17.0 が使われる。npm の宣言を外して同梱版に任せるかは未決定（mise の設定は WSL にも配置される）。
+- **npm**: 2026-10-31 に mise の `npm = "11.15.0"` の宣言を外し、Node.js 同梱版（Node 24.19.0 では 11.17.0、Node 22.23.1 では 10.9.8）を使う方針にした（[mise](mise.md#npm)）。macOS の live には反映済み。使わなくなった npm 11.15.0 の実体（`~/.local/share/mise/installs/npm/11.15.0`）は削除していない。WSL の実機では未確認。
 - **Codex**: macOS の Codex CLI は Homebrew cask で管理し、2026-10-17 に Brewfile へ `cask "codex"` を宣言した（WSL は公式 installer）。Codex app の cask の記録と実体の不一致は、2026-10-25 に `codex-app` の古い記録を削除して解消した（「導入」の「Codex app（macOS）」を参照）。
 - **Antigravity CLI**: 公式 installer 版と cask 版の二重導入は、2026-10-18 に cask 版を uninstall して解消した（「導入」の「Antigravity CLI（macOS、手動）」を参照）。残っている問題は2つ。`agy` を数分から数十分おきに起動しているもの（2026-10-17〜18 に、対話セッションとして起動した記録がある）が特定できていない。cask 版 1.1.17 が応答しなかった原因も特定できていない（cask を削除しただけで、原因は解決していない）。
 - **PATH**: 起動元アプリ（Orca）経由の環境に、存在しない path、相対 path、`node/24/bin` が先頭に入る。login shell 自体の PATH は正常。`scripts/doctor.sh` はこの環境で実行すると、相対 path を error として exit 1 を返す。2026-10-31 の確認では、空の要素と重複（warning）もあった。同じ環境には `HOMEBREW_VERSION=6.0.11` も引き継がれていて（実際の Homebrew は 7.0.11）、`brew --version` が古い値を表示する。新しい login shell では doctor は 0 errors / 0 warnings。

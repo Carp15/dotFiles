@@ -9,9 +9,35 @@ mise は user-level の tool version 管理に使います。macOS と WSL で�
 | Go | `1.26.3` | exact version で再現性を優先 |
 | Java | `temurin-21` | vendor と major version を明示（後述） |
 | Node.js | `24` | major version を宣言 |
-| npm | `11.15.0` | exact version を維持（後述の既知の問題を参照） |
+| npm | 宣言しない | Node.js 同梱版を使う（後述） |
 
 macOS と WSL に同じファイルを配置します（Windows native には配置しません）。template ではありません。
+
+### npm
+
+npm は mise で独立に固定せず、Node.js に同梱された版を使います（2026-10-31 に `npm = "11.15.0"` の宣言を外しました）。この固定は chezmoi 導入時（2026-09-21）の状態を取り込んだもので、理由の記録がなく、Node 24.19.0 同梱の 11.17.0 より古い npm を使わせていました。また global の宣言なので、Node 22 を指定した project でも 11.15.0 になっていました。
+
+同梱版を使うので、npm の版は使う Node.js の版で決まります。2026-10-31 時点で、Node 24.19.0 は npm 11.17.0、Node 22.23.1（project 用）は npm 10.9.8 です。project で npm の版をそろえる必要があれば、その project の `mise.toml` や `package.json` の `packageManager` で宣言します。
+
+宣言を外しても、インストール済みの `~/.local/share/mise/installs/npm/11.15.0` は削除していません（`mise prune` は別に承認を得て行う）。確認は `mise which npm` だけでなく、実際に解決されるものを見ます。
+
+```bash
+command -v npm && npm --version          # shim 経由で実際に使われる npm
+mise which npm                           # mise が解決する実体
+mise exec node@22 -- npm --version       # Node 22 では同梱の 10.9.x
+```
+
+### gopls
+
+gopls は mise にも Brewfile にも宣言しません。今は `go install golang.org/x/tools/gopls` で入れたものが、mise が `GOBIN` に設定する使用中の Go の `bin`（`~/.local/share/mise/installs/go/<version>/bin`）にあります（2026-10-31 時点で gopls v0.21.1、go1.26.3 で build）。ほかの場所（Homebrew、`~/go/bin`、Mason）にはありません。利用しているのは VS Code の Go 拡張で、Neovim（AstroNvim）は gopls を設定していません。VS Code の拡張が gopls を自動で導入・更新しているかは確認していません。`brew bundle dump` は `GOBIN` にある `go` / `gofmt` / `gopls` を `go "..."` の行として出力しますが、Homebrew の管理物ではないので Brewfile には宣言しません。
+
+gopls は Go の版ごとの `bin` に入るため、Go を更新する（`config.toml` の `go` を変える、または `go = "latest"` の project で新しい Go が入る）と、新しい Go には gopls がありません。Go を更新したら次を確認し、無ければ入れ直します。
+
+```bash
+mise which gopls                              # 新しい Go の bin にあるか
+go version "$(mise which gopls)"              # build した Go の版
+go install golang.org/x/tools/gopls@latest    # 無い・古いときに入れ直す
+```
 
 ### Java の vendor
 
@@ -45,10 +71,6 @@ mise 2026.10.0 で、隔離した設定ディレクトリを使って確認し�
 | `~/.config/mise/config.local.toml` | `config.toml` より高い | machine ごとの手元用。repository では使わない |
 | `~/.config/mise/config.toml` | conf.d より高い | 共通の宣言 |
 | `~/.config/mise/conf.d/*.toml` | 最も低い | 追加専用。`config.toml` にあるツールの値は上書きできない |
-
-## 既知の問題
-
-`npm = "11.15.0"` は、通常の login shell では宣言どおりに使われます（mise が npm の path を node の path より前に置く）。一方、Node 24.19.0 には npm 11.17.0 が同梱されています（nodejs.org の配布一覧で確認。global 更新したものではありません）。つまり今は、宣言によって同梱版より古い npm を使っています。PATH の先頭に `node/24/bin` を渡す起動元（Orca 経由の shell など）では、同梱の 11.17.0 が使われます。npm の宣言を外して Node 同梱版に任せるかは未決定で、今は変更していません（このファイルは WSL にも配置されます）。
 
 ## 管理しないもの
 
