@@ -68,9 +68,13 @@ cask "visual-studio-code"
 # tap "stablyai/orca"
 # cask "stablyai/orca/orca", trusted: true
 #
-# Not declared at all: intellij-idea (cask record without an app), and the
-# `go` entries from `brew bundle dump`: those are the binaries in mise's GOBIN
-# (Go is owned by mise, not Homebrew).
+# Not declared at all: the `go` entries from `brew bundle dump`: those are the
+# binaries in mise's GOBIN (Go is owned by mise, not Homebrew).
+#
+# IntelliJ IDEA: not installed on this Mac and not declared. The stale cask
+# record "intellij-idea" (no app behind it) was removed on 2026-10-31. If it is
+# needed again, choose between cask "intellij-idea" and JetBrains Toolbox at
+# that time (docs/packages.md).
 #
 # Antigravity: the app is the cask "antigravity" above. The Antigravity CLI
 # (`agy`) is owned by Google's official installer (~/.local/bin/agy, which
