@@ -206,10 +206,27 @@ find ~/.claude/skills -maxdepth 1 -type l -exec sh -c \
 3. 消すのは symlink だけにする（`rm ~/.claude/skills/<name>`。`-r` や末尾の `/` は付けない）。実体のディレクトリ、`cc-notes`、`synced/` には触れない。
 4. 改名の場合は、新しい名前で「追加したとき」の手順を行う。
 
-今後の管理方式は**検討中**で、どちらもまだ実装していません。
+#### doctor による整合性確認（実装済み、2026-11-01）
 
-1. `scripts/doctor.sh` に、上記と同じ読み取り専用の整合性確認を（warning として）加える。
-2. chezmoi の `symlink_`（`home/dot_claude/skills/symlink_<name>.tmpl` など）で symlink を宣言して管理する。`dot_claude` は `exact_` ではないので、`cc-notes` と `synced/` には影響しない［仕様］。既存の symlink と同じリンク先なら `chezmoi diff` は空になる見込みだが［推定］、未検証。Skill の追加・削除のたびに dotfiles の変更が要る。Windows は `home/.chezmoiignore` で `.claude` を除外しているため対象外になる。
+`scripts/doctor.sh` の「AI tools (APM skills for Claude Code)」節が、上記の確認 1〜3 と `SKILL.md` の有無を読み取り専用で行います。目的は、APM 管理の Skills と Claude 用 symlink のずれを早く見つけることで、**修復はしません**（symlink の作成・修復・削除、`apm` の実行、`SKILL.md` の内容の読み取りは行わない）。
+
+- **対象**: `~/.apm/apm.lock.yaml` の `deployed_files` にある `.agents/skills/<name>` だけを APM 管理の Skill とみなす（`~/.agents/skills` の全件ではない。ほかのツールも同じ場所を使うため）。Claude 側は `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/<name>`。
+- **lock の読み方**: APM 0.14.2 の lock の形式（`lockfile_version: '1'`、`dependencies:`、各依存の `  deployed_files:` の `  - <path>`）だけを行単位で読む。YAML を完全に解析するものではない。形式が違う lock は、0件として扱わず warn にする。
+- **warn**（exit code には影響しない。この節は error を出さない）:
+  - lock が読めない、または形式が分からない
+  - lock にある Skill の実体（`~/.agents/skills/<name>`）が無い、`SKILL.md` が無い・読めない
+  - Claude 側の symlink が無い、リンク切れ、`~/.agents/skills/<name>` 以外を指している（同名の実ディレクトリがある場合も含む）
+  - lock に無い symlink のうち、リンク切れで、リンク先の文字列が `~/.agents/skills/` の下を指しているもの（Skill の削除後に残った symlink の可能性）
+  - `~/.claude` はあるが `skills/` が無い、`CLAUDE_CONFIG_DIR` が絶対 path でない、またはディレクトリでない
+- **skip**（warn なし）: lock が無い（APM 未導入）、lock に Skill が無い、Claude Code の設定ディレクトリが無い（このときも APM 側の実体と `SKILL.md` は確認する）、Windows（Git Bash）。
+- **管理外**: `cc-notes`、`synced/`、lock に無い symlink（リンク先が別の場所、またはリンク切れで判断できないもの）、`~/.agents/skills` にあって lock に無い Skill は、名前を一覧に表示するだけで変更しない。
+- **対応 OS**: macOS は実機で確認済み（10件すべて ok、doctor 全体で 0 errors / 0 warnings）。WSL・Linux は同じコード（bash 3.2 以降、`cd -P` と `pwd -P` でリンク先を比較）で動く想定だが、実機では未検証。Windows native（`doctor.ps1`）は対象外。
+
+warn が出たら、上記の「Skill を追加したとき」「Skill を削除・改名したとき」の手順で、承認を得てから手で直します。
+
+#### chezmoi による宣言管理（検討中、未実装）
+
+chezmoi の `symlink_`（`home/dot_claude/skills/symlink_<name>.tmpl` など）で symlink を宣言して管理する。`dot_claude` は `exact_` ではないので、`cc-notes` と `synced/` には影響しない［仕様］。既存の symlink と同じリンク先なら `chezmoi diff` は空になる見込みだが［推定］、未検証。Skill の追加・削除のたびに dotfiles の変更が要る。Windows は `home/.chezmoiignore` で `.claude` を除外しているため対象外になる。
 
 ### Agents
 
@@ -326,7 +343,7 @@ Claude Code にはローカルの MCP 設定がありません（`~/.claude.json
 
 - **解消（2026-11-01、macOS）Codex の Skills の重複**: `~/.codex/skills/` にあった APM と同名の古いコピー5件を退避し（削除はしていない）、Codex の Skill 一覧の重複は0件になった［実測］（上記 6）。
 - **解消（2026-11-01、macOS）APM の配布が古い**: harness を `ba6934c` に固定して再配布し、`chezmoi-diff-apply` を含む10件を配布した［実測］（上記 2、6）。
-- **Claude 用 Skills の symlink が手動**: APM も chezmoi も管理していない。APM で Skill が増減しても追従せず、削除・改名でリンク切れになる。管理方式は検討中（上記 6）。
+- **Claude 用 Skills の symlink が手動**: APM も chezmoi も管理していない。APM で Skill が増減しても追従せず、削除・改名でリンク切れになる。ずれは `scripts/doctor.sh` が warn で知らせる（修復はしない）。chezmoi による宣言管理は検討中で未実装（上記 6）。
 - **APM の更新手順の制約**: 0.14.2 は user scope で安全な dry-run が無く、lock と配布を分けられない。`--update` は非推奨。GitHub からの取得は `gh` の認証に依存する。APM 本体の更新後は、手順を検証し直す必要がある。
 - **Agents が統一されていない**: `~/.claude/agents/` は手動で APM の配布対象外。Codex 側の APM 版と内容が揃っているかは未比較。`~/.codex/agents/` の APM 管理外5件の扱いも未決定。
 - **共通 AI 指示は macOS だけ適用済み**: WSL・Windows の実機では、適用も読み込みの確認もしていない。Windows は `home/.chezmoiignore` で配布から外している。
@@ -343,7 +360,7 @@ Claude Code にはローカルの MCP 設定がありません（`~/.claude.json
 3. （完了、2026-11-01）my-agent-harness を `ba6934c` に固定して APM で再配布した。
 4. Agents の整理: Claude の手動 Agents と APM 配布 Agents の差を比較し、Claude 側も APM で配布するか、`~/.codex/agents/` の APM 管理外5件をどう扱うかを決める。
 5. WSL での検証: APM の導入・更新、`~/.agents/skills` の配布、Claude 用 symlink、Codex の Skill 一覧を、macOS と同じ手順で確認する。
-6. Claude 用 symlink の管理: まず `scripts/doctor.sh` の読み取り専用の確認を加えるか、chezmoi の `symlink_` で宣言するかを決める（上記 6）。
+6. Claude 用 symlink の管理: `scripts/doctor.sh` の読み取り専用の確認は実装済み（2026-11-01）。chezmoi の `symlink_` で宣言して管理するかを決める（上記 6）。
 7. `~/.apm/apm.yml` / `apm.lock.yaml` を chezmoi で管理するかと、APM 本体の導入方法・更新（[packages](packages.md) の保留事項）を決める。
 8. `full.config.toml`、statusline、keybindings を配布するか決める。
 9. Claude の `settings.json` の一部のキーを `modify_` で管理するか決める。

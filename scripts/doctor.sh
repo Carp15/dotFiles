@@ -106,6 +106,222 @@ check_commands() {
   done < "$file"
 }
 
+# Print a path with $HOME shown as "~".
+tilde() {
+  case "$1" in
+    "$HOME") printf '~' ;;
+    "$HOME"/*) printf '~/%s' "${1#"$HOME"/}" ;;
+    *) printf '%s' "$1" ;;
+  esac
+}
+
+# Physical path of a directory (symlinks resolved), or nothing. Uses only the
+# cd / pwd builtins so that it works the same on macOS and Linux.
+physical_dir() {
+  (cd -P -- "$1" 2>/dev/null && pwd -P)
+}
+
+# APM skills exposed to Claude Code (docs/ai-tools.md). Read-only: it never runs
+# apm, never reads SKILL.md contents, and never creates, repairs, or removes a
+# symlink. Findings here are warnings only; nothing in this section is an error.
+#
+# Which skills are APM-managed is taken from ~/.apm/apm.lock.yaml, not from the
+# contents of ~/.agents/skills (other tools install skills there too). Only the
+# lock format written by APM 0.14.2 is understood: a top-level
+# "lockfile_version: '1'", a "dependencies:" list, and per dependency a
+# "  deployed_files:" block whose "  - <path>" items are relative to $HOME.
+# Items of the form .agents/skills/<name> are the skills checked here. This is
+# a line-oriented reading of that one layout, not a YAML parser; anything else
+# is reported as an unrecognized format instead of being read as zero skills.
+check_ai_skills() {
+  local lock="$HOME/.apm/apm.lock.yaml"
+  local agents_dir="$HOME/.agents/skills"
+  local claude_dir="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+  local parsed line version="" has_deps=0 deps_empty=0 has_deployed=0
+  local managed="" bad_entries="" name entry total=0 linked=0
+  local claude_skills="" link_check=1 link expected actual target
+  local unmanaged="" not_in_lock="" path base
+  local old_ifs
+
+  if [ ! -e "$lock" ] && [ ! -L "$lock" ]; then
+    printf '%-12s not set up (%s not found); skipped\n' "APM" "$(tilde "$lock")"
+    return
+  fi
+  if [ ! -f "$lock" ] || [ ! -r "$lock" ]; then
+    report_warn "APM lock" "$(tilde "$lock") is not a readable file; skills not checked"
+    return
+  fi
+  if ! parsed="$(awk '
+    { sub(/\r$/, "") }
+    /^lockfile_version:/ { v = $0; sub(/^lockfile_version:[ \t]*/, "", v); gsub(/["\047 \t]/, "", v); print "V " v; next }
+    /^dependencies:[ \t]*\[\][ \t]*$/ { print "Z"; next }
+    /^dependencies:[ \t]*$/ { print "D"; next }
+    /^  deployed_files:[ \t]*\[\][ \t]*$/ { print "F"; inblock = 0; next }
+    /^  deployed_files:[ \t]*$/ { print "F"; inblock = 1; next }
+    inblock && /^  - / { e = substr($0, 5); gsub(/["\047]/, "", e); sub(/[ \t]+$/, "", e); print "E " e; next }
+    { inblock = 0 }
+  ' "$lock" 2>/dev/null)"; then
+    report_warn "APM lock" "could not read $(tilde "$lock"); skills not checked"
+    return
+  fi
+
+  old_ifs=$IFS
+  IFS='
+'
+  set -f
+  for line in $parsed; do
+    case "$line" in
+      "V "*) version="${line#V }" ;;
+      D) has_deps=1 ;;
+      Z) has_deps=1 deps_empty=1 ;;
+      F) has_deployed=1 ;;
+      "E .agents/skills/"*)
+        entry="${line#E .agents/skills/}"
+        case "$entry" in
+          "" | .* | */*) bad_entries="$bad_entries ${line#E }" ;;
+          *) managed="$managed$entry
+" ;;
+        esac
+        ;;
+    esac
+  done
+  set +f
+  IFS=$old_ifs
+
+  if [ "$version" != "1" ] || [ "$has_deps" -eq 0 ] ||
+    { [ "$has_deployed" -eq 0 ] && [ "$deps_empty" -eq 0 ]; }; then
+    report_warn "APM lock" "unrecognized format in $(tilde "$lock") (expected the APM 0.14.2 layout, lockfile_version '1'); skills not checked"
+    return
+  fi
+  if [ -n "$bad_entries" ]; then
+    report_warn "APM lock" "unrecognized skill entries:$bad_entries"
+  fi
+  managed="$(printf '%s' "$managed" | sort -u)"
+  if [ -z "$managed" ]; then
+    printf '%-12s no skills deployed to %s; skipped\n' "APM skills" "$(tilde "$agents_dir")"
+    return
+  fi
+  total="$(printf '%s\n' "$managed" | wc -l | tr -d ' ')"
+  printf '%-12s %s skill(s) in %s\n' "APM skills" "$total" "$(tilde "$lock")"
+
+  case "$claude_dir" in
+    /*)
+      if [ ! -e "$claude_dir" ]; then
+        printf '%-12s not set up (%s not found); link check skipped\n' "Claude" "$(tilde "$claude_dir")"
+        link_check=0
+      elif [ ! -d "$claude_dir" ]; then
+        report_warn "Claude" "$(tilde "$claude_dir") is not a directory; link check skipped"
+        link_check=0
+      elif [ ! -d "$claude_dir/skills" ]; then
+        report_warn "Claude" "$(tilde "$claude_dir/skills") not found; $total APM skill(s) not linked (docs/ai-tools.md)"
+        link_check=0
+      else
+        claude_skills="$claude_dir/skills"
+      fi
+      ;;
+    *)
+      report_warn "Claude" "CLAUDE_CONFIG_DIR is not an absolute path; link check skipped"
+      link_check=0
+      ;;
+  esac
+
+  IFS='
+'
+  set -f
+  for name in $managed; do
+    IFS=$old_ifs
+    set +f
+    expected="$agents_dir/$name"
+    if [ ! -d "$expected" ]; then
+      report_warn "Skills" "$name: in the APM lock but $(tilde "$expected") is missing"
+    elif [ ! -f "$expected/SKILL.md" ] || [ ! -r "$expected/SKILL.md" ]; then
+      report_warn "Skills" "$name: SKILL.md missing or unreadable"
+    fi
+
+    if [ "$link_check" -eq 1 ]; then
+      link="$claude_skills/$name"
+      if [ -L "$link" ]; then
+        if [ ! -e "$link" ]; then
+          report_warn "Claude link" "$name: broken link"
+        else
+          actual="$(physical_dir "$link")"
+          target="$(physical_dir "$expected")"
+          if [ -n "$actual" ] && [ "$actual" = "$target" ]; then
+            linked=$((linked + 1))
+          else
+            report_warn "Claude link" "$name: points elsewhere, not to $(tilde "$expected")"
+          fi
+        fi
+      elif [ -e "$link" ]; then
+        report_warn "Claude link" "$name: $(tilde "$link") exists but is not a symlink to $(tilde "$expected")"
+      else
+        report_warn "Claude link" "$name: not linked (docs/ai-tools.md)"
+      fi
+    fi
+    IFS='
+'
+    set -f
+  done
+  set +f
+  IFS=$old_ifs
+
+  if [ "$link_check" -eq 1 ]; then
+    if [ "$linked" -eq "$total" ]; then
+      printf '%-12s ok       %s of %s APM skill(s) linked to %s\n' "Claude" "$linked" "$total" "$(tilde "$agents_dir")"
+    else
+      printf '%-12s %s of %s APM skill(s) linked correctly\n' "Claude" "$linked" "$total"
+    fi
+
+    # Entries that are not APM skills are left alone. A symlink that is not in
+    # the lock is warned about only when it is broken and its target text names
+    # a path under ~/.agents/skills (most likely left behind after the skill was
+    # removed). Without readlink, or for any other target, it is listed only.
+    for path in "$claude_skills"/* "$claude_skills"/.[!.]* "$claude_skills"/..?*; do
+      [ -e "$path" ] || [ -L "$path" ] || continue
+      base="${path##*/}"
+      [ "$base" = ".DS_Store" ] && continue
+      case "
+$managed
+" in
+        *"
+$base
+"*) continue ;;
+      esac
+      if [ -L "$path" ] && [ ! -e "$path" ] && command -v readlink >/dev/null 2>&1 &&
+        target="$(readlink "$path" 2>/dev/null)"; then
+        case "$target" in
+          "$agents_dir"/*)
+            report_warn "Claude link" "$base: broken link into $(tilde "$agents_dir"), not in the APM lock (left after the skill was removed?)"
+            continue
+            ;;
+        esac
+      fi
+      unmanaged="$unmanaged $base"
+    done
+    if [ -n "$unmanaged" ]; then
+      printf '%-12s%s (not APM skills; left as is)\n' "Unmanaged" "$unmanaged"
+    fi
+  fi
+
+  if [ -d "$agents_dir" ]; then
+    for path in "$agents_dir"/*; do
+      [ -e "$path" ] || [ -L "$path" ] || continue
+      base="${path##*/}"
+      case "
+$managed
+" in
+        *"
+$base
+"*) continue ;;
+      esac
+      not_in_lock="$not_in_lock $base"
+    done
+    if [ -n "$not_in_lock" ]; then
+      printf '%-12s%s (in %s but not managed by APM; not checked)\n' "Not in lock" "$not_in_lock" "$(tilde "$agents_dir")"
+    fi
+  fi
+}
+
 # ---------------------------------------------------------------------------
 
 section "System"
@@ -296,6 +512,16 @@ section "Languages"
 present "Node.js" node --version
 present "Go" go version
 present "Rust" rustc --version
+
+section "AI tools (APM skills for Claude Code)"
+case "$platform" in
+  macos | wsl | linux)
+    check_ai_skills
+    ;;
+  *)
+    printf '%s\n' "Skipped on this platform (Windows native is not checked; see docs/ai-tools.md)."
+    ;;
+esac
 
 section "Required commands (packages/commands)"
 case "$platform" in
