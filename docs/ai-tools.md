@@ -2,11 +2,12 @@
 
 Claude Code、Codex などの AI 開発ツールの設定を、どこで誰が管理するかの方針です。2026-11-01 の読み取り専用監査（Phase 4D-1）の結果を元にしています。dotfiles が管理するのは、共通の AI 指示（`~/.codex/AGENTS.md` と `~/.claude/CLAUDE.md`、下記 5）だけです。source state（`home/dot_codex/AGENTS.md`、`home/dot_claude/CLAUDE.md`）から、macOS 実機で `chezmoi apply` しました（2026-11-01、Phase 4D-2b-3）。live で chezmoi が管理するのはこの2ファイルだけで、Codex・Claude Code の両方で読み込みを確認しています（下記 5）。WSL・Windows の実機では未検証です。
 
-記述の根拠を次の4つで区別します。
+記述の根拠を次の5つで区別します。
 
-- **［実測］**: この Mac で確認した事実。Codex は、HOME と `CODEX_HOME` を一時ディレクトリにし、network を遮断した sandbox で `codex debug prompt-input`（model に渡す入力を表示するだけで、model は呼ばない）を実行して確認した。認証ファイルは使っていない。適用後の live 検証（下記 5）だけは、実際の `~/.codex` で実行した
-- **［バイナリ］**: インストール済み CLI（Claude Code 2.1.316、Codex 0.166.0）に含まれる文字列・コードの読解。実行での確認ではない
-- **［仕様］**: ツールの公式ドキュメント
+- **［実測］**: この Mac で確認した事実。Codex は、HOME と `CODEX_HOME` を一時ディレクトリにし、network を遮断した sandbox で `codex debug prompt-input`（model に渡す入力を表示するだけで、model は呼ばない）を実行して確認した。認証ファイルは使っていない。ただし、共通指示の適用後の検証（下記 5）と、Skills・APM の整理（Phase 4D-2c、下記 6）は、実際の `~/.codex` で `codex debug prompt-input` を実行して確認した
+- **［バイナリ］**: インストール済み CLI（Claude Code 2.1.316、Codex 0.166.0、APM 0.14.2）に含まれる文字列・コードの読解。実行での確認ではない
+- **［仕様］**: ツールの公式ドキュメント、または CLI の `--help`
+- **［推定］**: 実測や仕様からの推測。事実としては扱わない
 - **［未確認］**: 確認していないこと。推測で補わない
 
 ## 1. 目的と適用範囲
@@ -26,20 +27,21 @@ Claude Code、Codex などの AI 開発ツールの設定を、どこで誰が�
 | Claude Code | 公式 native installer（`~/.local/bin/claude`）。VS Code 拡張もある | 使用中 | `~/.claude/`、`~/.claude.json` |
 | Codex CLI | Homebrew cask `codex`（[packages](packages.md)） | 使用中 | `~/.codex/` |
 | Codex app | 既存の ChatGPT.app（[packages](packages.md#codex-appmacos)） | 使用中 | `~/.codex/`（CLI と共有） |
-| APM（Agent Package Manager） | 手動（`/usr/local/bin/apm`。導入方法は未決定） | 使用中 | `~/.apm/`（`apm.yml`、`apm.lock.yaml`） |
+| APM（Agent Package Manager） | 手動（`/usr/local/bin/apm`、0.14.2。導入方法は未決定） | 使用中 | `~/.apm/`（`apm.yml`、`apm.lock.yaml`、`apm_modules/`） |
 | Antigravity CLI（`agy`） | 公式 installer | 導入済み | `~/.gemini/antigravity-cli/` |
 | Orca、herdr | Homebrew cask・formula | 使用中 | Claude / Codex の Hooks に自分の hook を登録する |
 | Gemini CLI、OpenCode | – | コマンドは未導入。`~/.gemini/`、`~/.config/opencode/` だけが残っている | – |
 | `npx skills`（vercel skills CLI） | – | 過去に使った痕跡（`~/.agents/.skill-lock.json`、skills は空） | – |
 
-Skills・Agents の配布元は、GitHub の `Carp15/my-agent-harness`（`~/.apm/apm.yml` の依存）です。`~/.apm/apm.lock.yaml` の解決済み commit は repository の HEAD より1つ古く、最新の Skill（`chezmoi-diff-apply`）は未配布です。
+Skills・Agents の配布元は、GitHub の `Carp15/my-agent-harness`（`~/.apm/apm.yml` の依存）です。2026-11-01 に macOS 実機で APM 0.14.2 を使って更新し（Phase 4D-2c-4b）、依存を完全な SHA `ba6934c2cd514c8b043fa69e9ca1957cade69a33` に固定しました。`apm.yml` の依存、lock の `resolved_commit`、`apm_modules` の pin と中身、配布済みの Skills 10件・Codex Agents 9件は、すべてこの commit と一致しています［実測］。手順は下記 6 の「APM の更新手順」を参照してください。
 
 ## 3. 管理責務の一覧
 
 | 管理者 | 責務 | 例 |
 | --- | --- | --- |
 | dotfiles（chezmoi） | 共通指示と、再現できる非機密の設定の配布 | `~/.codex/AGENTS.md`、`~/.claude/CLAUDE.md`（下記 5。macOS は適用済み） |
-| my-agent-harness / APM | Skills・Agents の配布元 | `~/.agents/skills/*`、`~/.codex/agents/*.toml` の一部 |
+| my-agent-harness / APM | Skills と一部の Agents の配布元 | `~/.agents/skills/*`（10件）、`~/.codex/agents/*.toml` のうち9件 |
+| 手動（ユーザー） | どの manager も管理していないもの | `~/.claude/skills/` の symlink 10件、`~/.claude/agents/`、`~/.codex/agents/` の APM 管理外5件（下記 6） |
 | Claude Code | Claude 固有の設定と実行時状態 | `~/.claude/settings.json`、`~/.claude.json`、plugins |
 | Codex | Codex 固有の設定と実行時状態 | `~/.codex/config.toml`、plugins、`rules/` |
 | Orca / herdr | 自分が生成・更新する Hooks | Claude の `settings.json` の `hooks`、Codex の `hooks.json` |
@@ -53,7 +55,7 @@ Skills・Agents の配布元は、GitHub の `Carp15/my-agent-harness`（`~/.apm
 | --- | --- | --- |
 | 共通設定 | 共通ルール（`~/.codex/AGENTS.md`） | source state は `home/dot_codex/AGENTS.md`。macOS の live は適用済み |
 | ツール固有設定 | `~/.claude/CLAUDE.md`（import だけの薄いファイル） | source state は `home/dot_claude/CLAUDE.md`。macOS の live は適用済み |
-| ツール固有設定 | `~/.apm/apm.yml`、`apm.lock.yaml`（宣言だけ） | 未管理 |
+| ツール固有設定 | `~/.apm/apm.yml`、`apm.lock.yaml`（宣言だけ） | chezmoi の管理外。live の `apm.yml` で harness の commit を固定している（下記 6） |
 | ツール固有設定 | `~/.codex/full.config.toml`、`~/.claude/statusline-command.sh`、各ツールの `keybindings.json` | 未管理。管理するかは未決定（`full.config.toml` は下記 9 を参照） |
 | ツール固有設定 | Claude の `settings.json` のうち、`language`、`statusLine` など一部のキー | 未管理。ファイル全体は管理しない（下記） |
 
@@ -146,29 +148,114 @@ Windows で `~/` が解決されない場合や、ほかの環境で Claude の 
 ## 6. Skills / Agents / Commands の管理方針
 
 - **管理元は APM**（my-agent-harness）。dotfiles に Skills・Agents の実体をコピーしない。
-- **既存の重複は削除しない**（片付けは、退避と個別承認を前提に後続フェーズで扱う）。
+- **重複は削除せずに退避する**。見つけた重複は、内容を比較し、退避先と復元手順を記録したうえで、個別に承認を得て Skills の探索 path の外へ移す。
+
+ここに書いた件数と状態は、2026-11-01 の macOS の［実測］です（Phase 4D-2c）。WSL・Windows では確認していません。
 
 ### Skills
 
 | 場所 | 中身［実測］ | 読むツール |
 | --- | --- | --- |
-| `~/.agents/skills/` | APM が配布した9つ（実体） | Codex（`user-agent-skills` として）［仕様］ |
-| `~/.claude/skills/` | 上記9つへの symlink、手動の `cc-notes`（実体）、アカウント同期の `synced/` | Claude Code |
-| `~/.codex/skills/` | `.system/`（Codex 同梱）、`codex-primary-runtime`、APM と同名の5つ（commit、delegate-implementation、ios-device-install、plan、review。2026-05 の古いコピー） | Codex（`codex-home-skills` として）［仕様］ |
+| `~/.agents/skills/` | APM が配布した10件（実体）。chezmoi-diff-apply、commit、delegate-codex-implementation、delegate-implementation、harness-doctor、ios-device-install、manage-dotfiles、plan、refine-requirements、review | Codex（`user-agent-skills` として）［仕様］ |
+| `~/.claude/skills/` | 上記10件への symlink（手動。下記「Claude Code への公開」）。ほかに、APM 外の手動 Skill `cc-notes`（実体）と、アカウント同期の `synced/` | Claude Code |
+| `~/.codex/skills/` | `.system/`（Codex 同梱）と `codex-primary-runtime` だけ | Codex（`codex-home-skills` として）［仕様］ |
 
-- ［実測］ `~/.codex/skills/` の5つのうち、commit と ios-device-install は `SKILL.md` の内容が `~/.agents/skills/` 版と異なる。
-- ［実測］ Codex は、`~/.codex/skills` と `~/.agents/skills` に同名の Skill があると、重複を除かずに両方を Skill 一覧に載せる（隔離環境の `codex debug prompt-input` で、同名・別内容の Skill が2行とも表示された）。現在の環境では、上記5つがそれぞれ2つの版で model に見えている。
-- ［未確認］ 両方が見えているときに、model が実際にどちらを使うか。
-- Claude 側は `~/.claude/skills/<name>` を `~/.agents/skills/<name>` への symlink にする運用を続ける（実体を置かない）。例外として `cc-notes` は APM 外の手動 Skill。
+- ［実測］ Codex は、`~/.codex/skills` と `~/.agents/skills` に同名の Skill があると、重複を除かずに両方を Skill 一覧に載せる。そのため、`~/.codex/skills` には Skill を置かない。
+- ［実測］ 2026-11-01 に、`~/.codex/skills` に残っていた APM と同名の古いコピー（2026-05）5件を、Skills の探索 path の外へ退避した。**削除はしていない**。
+  - delegate-implementation、plan、review は、APM 版と内容・権限まで完全に一致していた（Phase 4D-2c-5）。
+  - commit と ios-device-install は内容が異なっていた。commit は常に `Co-Authored-By` を付ける旧手順、ios-device-install は `~/.codex/skills` の絶対 path を使う旧手順で、どちらも APM 版を正とした（Phase 4D-2c-6b）。script は同一だった。
+  - 退避先と復元手順は、`~/.local/state/dotfiles/backup/phase-4d-2c-5/*/README.txt` と `~/.local/state/dotfiles/backup/phase-4d-2c-6b/20261101T213946/README.txt`。同じ階層の `20261101T213912/` は、script の誤りで中断したときの空の記録で、退避したデータは入っていない（`ABORTED.txt`）。
+- ［実測］ 退避後の Codex の Skill 一覧は21件で、名前の重複は0件。APM 管理の10件は、どれも `~/.agents/skills` から1回だけ読み込まれている。
+- 重複の確認には `codex debug prompt-input` の出力を使う。Skill の path は `r0` などの別名で表示され、番号は一覧の内容で変わるので、比較するときは別名を絶対 path に展開してから比べる。
+
+### Claude Code への公開
+
+`~/.claude/skills/<name>` を `~/.agents/skills/<name>` への symlink にして、Claude Code から APM 管理の Skills を使っています。**この symlink は APM も chezmoi も管理していない手動のもの**です。形式は `ln -s` で作った絶対 path（`/Users/<user>/.agents/skills/<name>`、末尾の `/` なし）です［実測］。
+
+- APM が Skill を追加しても、Claude 側の symlink は自動では作られない。
+- APM が Skill を消したり名前を変えたりすると、Claude 側の symlink はリンク切れになる。
+- `cc-notes` と `synced/` は APM 外の既存のディレクトリとして残し、自動で削除・移動しない。下記の確認は symlink だけを対象にし、この2つには触れない。
+
+整合性の確認（読み取りだけ。macOS の bash と zsh で動作を確認）:
+
+```sh
+# 1. 名前の一致: APM 管理の Skill と、Claude 側の symlink の名前の差を表示する（何も出なければ一致）
+comm -3 <(ls ~/.agents/skills) <(find ~/.claude/skills -maxdepth 1 -type l -exec basename {} \; | sort)
+
+# 2. リンク切れ: リンク先が存在しない symlink を表示する
+find ~/.claude/skills -maxdepth 1 -type l ! -exec test -e {} \; -print
+
+# 3. リンク先: ~/.agents/skills/<同じ名前> 以外を指している symlink を表示する
+find ~/.claude/skills -maxdepth 1 -type l -exec sh -c \
+  't=$(readlink "$1"); [ "$t" = "$HOME/.agents/skills/${1##*/}" ] || echo "unexpected: $1 -> $t"' _ {} \;
+```
+
+1 は名前だけを比べるので、同じ名前で別の場所を指す symlink は 3 で見つけます。
+
+**Skill を追加したとき**（APM の配布後。live の変更なので承認を得てから行う）:
+
+1. `~/.agents/skills/<name>/SKILL.md` があることを確かめる。
+2. `~/.claude/skills/<name>` に、ファイル・ディレクトリ・symlink のどれも無いことを確かめる。何かあれば上書きせずに止める。
+3. `ln -s "$HOME/.agents/skills/<name>" "$HOME/.claude/skills/<name>"` で作る（`-f` は付けない）。
+4. 上の確認 1〜3 を実行し、`~/.claude/skills/<name>/SKILL.md` を symlink 経由で読めることを確かめる。
+
+**Skill を削除・改名したとき**（承認を得てから行う）:
+
+1. 対象が symlink であること（`[ -L ~/.claude/skills/<name> ]`）と、リンク先が `~/.agents/skills/<name>` であることを確かめる。
+2. リンク先が本当に無くなっていること（確認 2 で表示される）と、APM の lock にその Skill が無いことを確かめる。
+3. 消すのは symlink だけにする（`rm ~/.claude/skills/<name>`。`-r` や末尾の `/` は付けない）。実体のディレクトリ、`cc-notes`、`synced/` には触れない。
+4. 改名の場合は、新しい名前で「追加したとき」の手順を行う。
+
+今後の管理方式は**検討中**で、どちらもまだ実装していません。
+
+1. `scripts/doctor.sh` に、上記と同じ読み取り専用の整合性確認を（warning として）加える。
+2. chezmoi の `symlink_`（`home/dot_claude/skills/symlink_<name>.tmpl` など）で symlink を宣言して管理する。`dot_claude` は `exact_` ではないので、`cc-notes` と `synced/` には影響しない［仕様］。既存の symlink と同じリンク先なら `chezmoi diff` は空になる見込みだが［推定］、未検証。Skill の追加・削除のたびに dotfiles の変更が要る。Windows は `home/.chezmoiignore` で `.claude` を除外しているため対象外になる。
 
 ### Agents
 
 | 場所 | 中身［実測］ |
 | --- | --- |
-| `~/.codex/agents/*.toml` | 14個。うち9つは APM が `.apm/agents/*.agent.md` から生成（2026-09）、5つは手動（2026-05） |
-| `~/.claude/agents/*.md` | 14個（と README）。APM の配布対象外で、手動（2026-04）。名前は Codex 側と同じ |
+| `~/.codex/agents/*.toml` | 14件。APM 管理の9件（api-designer、architect、code-reviewer、db-reviewer、feature-planner、planner、release-checker、security-checker、system-designer。`.apm/agents/*.agent.md` から生成）と、APM 管理外の手動の5件（debug-assistant、diagram-generator、doc-generator、e2e-tester、test-generator。2026-05） |
+| `~/.claude/agents/*.md` | 14件（と README）。APM の配布対象外で、手動（2026-04）。名前は Codex 側の14件と同じ |
 
-Claude 側の手動 Agents と APM 配布 Agents（Codex 側）の内容の差は、後続フェーズで検討します。`~/.apm/config.json` の `default_client` は `vscode` です。
+Agents の内容の統一（Claude 側の手動 Agents と Codex 側の APM 版の比較、管理外5件の扱い）は、まだ行っていません。`~/.apm/config.json` の `default_client` は `vscode` です。
+
+### APM の更新手順（APM 0.14.2、macOS で実証）
+
+2026-11-01 に macOS の APM 0.14.2 で、隔離環境での再現（network 遮断、偽の HOME）と実機での更新（Phase 4D-2c-4b）を行った結果です。WSL・Windows、ほかの APM の版では確認していません。
+
+注意点:
+
+- ［実測］ user scope（`~/.apm`）では `apm update` を使わない。0.14.2 の `apm update` には `--global` が無く［仕様］、`~/.apm` を project として扱う。
+- ［実測］ `apm update --dry-run` も書き込む（`~/.apm/config.json`、`apm_modules/`、`~/Library/Caches/apm/git` を作る）。
+- ［実測］ `apm install -g --dry-run` は依存の一覧（「install する予定」）しか表示せず、ファイル単位の差分は分からない。
+- ［実測］ `apm.yml` で依存を固定しただけでは、lock の内容 hash と合わずに中断する。`--update` を付けると、lock・`apm_modules`・配布ファイルが1回の実行で同時に更新され、分けられない。`--update` は 0.14.2 では非推奨だが動作する［仕様・実測］。
+- ［実測］ 失敗すると（clone の失敗、hash の不一致）、`apm_modules/<owner>/<repo>` が消えることがある。lock と配布済みのファイルは残る。
+- ［バイナリ・推定］ 配布先は `~/.claude`、`~/.codex`、`~/.gemini` などの有無から自動で選ばれるため、`--target codex` を必ず付ける。付けないと `~/.claude` にも配布されるおそれがある。
+- ［実測］ カレントディレクトリに `.gitignore` を作り（`apm_modules/` を追記）、`.apm/` があれば取り込む。そのため、新しく作った空のディレクトリで実行する。
+- ［実測］ 配布先にある APM 管理の Skill は、手元で編集していても警告だけで上書きされる。手元の変更は事前にバックアップする。
+- ［実測］ 実機では、GitHub からの取得は `gh` の認証を使った HTTPS だった（ログに `Auth: gh-auth-token`）。`gh` の認証が切れていると取得に失敗する見込み［推定］。
+- ［実測］ 元に戻すときに、旧い `apm.yml` と lock に戻して `apm install` すると、追加された Skill が残り、手元の変更も戻らない。ロールバックは APM の再 install ではなく、バックアップから戻す。
+
+手順（各段階の確認が終わるまで次へ進まない。`--force` は使わない）:
+
+1. **事前確認**: dotFiles と my-agent-harness が clean で、harness の対象 commit が push 済みであること。`apm --version` が想定した版であること。lock の `resolved_commit`、`apm.yml` の依存、Skills の手元の変更の有無を記録する。
+2. **バックアップ**: Skills の探索 path の外に、新しいディレクトリ（例: `~/.local/state/dotfiles/backup/<phase>/<timestamp>/`、権限 700、既存を上書きしない）を作り、次を保存・記録する。認証情報とセッションは含めない。
+   - tar で保存: `~/.apm/apm.yml`、`apm.lock.yaml`、`config.json`、`apm_modules/`、`~/.agents/skills/`、`~/.codex/agents/`
+   - 種別・権限・SHA-256 の一覧（symlink はたどらない）: 上記と、記録だけの `~/.codex/skills/`、`~/.claude/skills/`（リンク先）、`~/.codex/hooks.json`、`~/.claude/settings.json`、`~/.codex/config.toml`
+   - tar を別の場所に展開して一覧と照合し、`SHA256SUMS` と復元手順（README）を残す。
+3. **依存の固定**: `~/.apm/apm.yml` の該当する依存1行だけを、完全な SHA で書き換え、差分を確認する（例: `Carp15/my-agent-harness#ba6934c2cd514c8b043fa69e9ca1957cade69a33`）。
+4. **実行**（1〜3 が終わってから。network を使う）: 新しく作った空の一時ディレクトリに移り、`.apm` と `.gitignore` が無いことを確かめてから、次を1回だけ実行する。macOS・APM 0.14.2 で検証済みのコマンド:
+
+   ```sh
+   apm install -g --target codex --update --verbose
+   ```
+
+   失敗したら再試行せず、それ以上何も変えずに、lock・`apm_modules`・配布ファイルの状態を確認する。
+5. **事後確認**: `apm.yml`、lock の `resolved_commit` / `resolved_ref`、`apm_modules` の `.apm-pin` が同じ SHA であること。手順2の一覧と比べて、変わったのが lock・`apm_modules`・想定した Skills / Agents だけで、hooks・settings・`config.toml`・Claude の symlink が同じであること。`codex debug prompt-input` で、Skill が `~/.agents/skills` から1回ずつ読み込まれていること。新しい Skill を Claude Code で使う場合は、上記「Claude Code への公開」の追加手順を別に行う。一時ディレクトリ（`.gitignore` だけが入っている）は確認してから片付ける。
+6. **ロールバック**: バックアップの README の手順で、現在のものを退避してから tar を展開し、一覧と照合する。`apm_modules` だけが消えた場合は、tar から `.apm/apm_modules` だけを戻す。
+
+2026-11-01 の更新のバックアップは `~/.local/state/dotfiles/backup/phase-4d-2c-4b/20261101T130134/`（更新前の状態）です。手元で変更していた manage-dotfiles の参照ファイル（更新で上書きされた）は `~/.local/state/dotfiles/backup/phase-4d-2c/manage-dotfiles/` にあります。
 
 ### Commands
 
@@ -178,9 +265,10 @@ Claude 側の手動 Agents と APM 配布 Agents（Codex 側）の内容の差�
 
 | 方法 | 評価 |
 | --- | --- |
-| ネイティブ参照（APM → `~/.agents/skills`、Claude は symlink） | 現行。採用する |
+| ネイティブ参照（APM → `~/.agents/skills`、Claude は symlink） | 現行。採用する。Claude 側の symlink は手動 |
 | chezmoi で Skill の実体を複製・配置 | 正が APM と二重になるため採用しない |
-| chezmoi で `~/.claude/skills/` の symlink を管理 | macOS / WSL は可能。Windows は symlink に Developer Mode が要る。Skill の追加ごとに dotfiles の変更が要る。保留 |
+| APM で Claude にも配布する（`--target` に claude を含める） | `~/.claude/skills/` に実体が置かれ、「`~/.claude/skills/` には symlink だけを置く」運用に反する。既存の symlink とぶつかったときの挙動は［未確認］。採用しない |
+| chezmoi で `~/.claude/skills/` の symlink を管理 | 検討中（上記「Claude Code への公開」）。macOS・WSL は chezmoi の仕様上は可能［仕様］だが、実機では未検証。Windows は symlink に Developer Mode が要る［仕様］。Skill の追加ごとに dotfiles の変更が要る |
 
 ## 7. Hooks / Plugins / MCP の管理方針
 
@@ -214,10 +302,12 @@ Claude Code にはローカルの MCP 設定がありません（`~/.claude.json
 | --- | --- | --- | --- |
 | Claude Code | 導入済み（[packages](packages.md)） | bootstrap が公式 installer で導入 | bootstrap は導入しない |
 | Codex CLI | Homebrew cask | bootstrap が公式 installer で導入 | bootstrap は導入しない |
-| APM | 手動で導入済み | 導入手順なし［未確認］ | 導入手順なし［未確認］ |
+| APM | 手動で導入済み（0.14.2） | 導入手順なし［未確認］ | 導入手順なし［未確認］ |
+| APM の更新（上記 6 の手順） | 実機で実証済み（2026-11-01） | 未検証 | 未検証 |
+| APM 管理の Skills（`~/.agents/skills`） | 10件を配布済み。Codex で読み込みを確認 | 未検証 | 未検証 |
 | 設定の home | `~/.claude`、`~/.codex` | WSL 側の `~/.claude`、`~/.codex`（Windows と別） | `%USERPROFILE%\.claude`、`.codex`［未確認］ |
 | 共通 AI 指示（`~/.codex/AGENTS.md`、`~/.claude/CLAUDE.md`） | 配布対象（適用・読み込み確認済み） | 配布対象（実機は未検証） | 配布しない（`home/.chezmoiignore` で `.codex`、`.claude` を除外）。Claude の `@~/` が `%USERPROFILE%` に解決されるか［未確認］のため保留 |
-| Skills の symlink | 現行どおり | 可能 | Developer Mode が要る |
+| Claude 用 Skills の symlink | 手動の10件で運用中 | 未検証（symlink 自体は使える見込み［推定］） | 未検証（symlink には Developer Mode が要る［仕様］） |
 | Orca / herdr の Hooks | 使用中 | 未使用 | bash 前提のため使えない |
 
 - chezmoi で配置する場合、OS ごとの出し分けは `home/.chezmoiignore` と `.chezmoitemplates/platform`（[chezmoi](chezmoi.md)）で行います。
@@ -234,22 +324,26 @@ Claude Code にはローカルの MCP 設定がありません（`~/.claude.json
 
 ## 10. 既知の問題と未確認事項
 
-- **Codex の Skills の重複**: `~/.codex/skills/` に APM と同名の古いコピーが5つあり、Codex は両方を一覧に載せる［実測］。model がどちらを使うかは［未確認］。削除はしていない。
-- **APM の配布が古い**: lock は my-agent-harness の HEAD より1つ前で、`chezmoi-diff-apply` が未配布。
-- **Claude の Agents が手動**: `~/.claude/agents/` は APM の配布対象外で、Codex 側の APM 版と内容が揃っているかは未比較。
+- **解消（2026-11-01、macOS）Codex の Skills の重複**: `~/.codex/skills/` にあった APM と同名の古いコピー5件を退避し（削除はしていない）、Codex の Skill 一覧の重複は0件になった［実測］（上記 6）。
+- **解消（2026-11-01、macOS）APM の配布が古い**: harness を `ba6934c` に固定して再配布し、`chezmoi-diff-apply` を含む10件を配布した［実測］（上記 2、6）。
+- **Claude 用 Skills の symlink が手動**: APM も chezmoi も管理していない。APM で Skill が増減しても追従せず、削除・改名でリンク切れになる。管理方式は検討中（上記 6）。
+- **APM の更新手順の制約**: 0.14.2 は user scope で安全な dry-run が無く、lock と配布を分けられない。`--update` は非推奨。GitHub からの取得は `gh` の認証に依存する。APM 本体の更新後は、手順を検証し直す必要がある。
+- **Agents が統一されていない**: `~/.claude/agents/` は手動で APM の配布対象外。Codex 側の APM 版と内容が揃っているかは未比較。`~/.codex/agents/` の APM 管理外5件の扱いも未決定。
 - **共通 AI 指示は macOS だけ適用済み**: WSL・Windows の実機では、適用も読み込みの確認もしていない。Windows は `home/.chezmoiignore` で配布から外している。
 - **herdr の hook script**: Claude 用と Codex 用で内容が異なる（管理対象外。記録のみ）。
 - **未導入ツールの残骸**: `~/.gemini/`（認証ファイルを含む）、`~/.config/opencode/`。扱いは未決定。
-- **［未確認］** Claude Code が展開した共通ルールと source の全文比較。import 失敗時の挙動。live の `codex debug prompt-input` 後に更新された Codex の状態ファイル・キャッシュの原因と通信の有無。WSL・Windows 実機での配布と読み込み。Windows での `~/` の解決。`instructionFiles` の公式仕様。同名 Skill を model がどちらを使うか。Windows の `CODEX_HOME` の既定値。WSL・Windows での APM。
+- **［未確認］** Claude Code が展開した共通ルールと source の全文比較。import 失敗時の挙動。live の `codex debug prompt-input` 後に更新された Codex の状態ファイル・キャッシュの原因と通信の有無。WSL・Windows 実機での配布と読み込み。Windows での `~/` の解決。`instructionFiles` の公式仕様。Windows の `CODEX_HOME` の既定値。WSL・Windows での APM の導入・更新と Skills の配布、Claude 用 symlink の運用。APM 0.14.2 より新しい版での更新手順。chezmoi の `symlink_` に移したときに `chezmoi diff` が空になるか。`~/.claude/skills/synced/` の同期の仕組み。
 
 ## 11. Phase 4D-2b 以降の作業候補
 
 それぞれ個別に承認を得てから行います。
 
 1. 共通 AI 指示を WSL 実機に適用し、macOS と同じ手順（`chezmoi diff` → 対象を指定した `chezmoi apply`、Codex は `codex debug prompt-input`、Claude は新しい session の `/memory` と `/context`）で確認する。Windows に配布するかは、Windows 実機で `@~/` の解決を確認してから決める。
-2. `~/.codex/skills/` の重複5つを退避してから片付け、Codex の参照を `~/.agents/skills` に揃える。
-3. `apm install` で my-agent-harness の最新版を配布する。
-4. Claude の手動 Agents と APM 配布 Agents の差を比較し、Claude 側も APM で配布するかを決める。
-5. `~/.apm/apm.yml` / `apm.lock.yaml` と APM 本体の導入方法（[packages](packages.md) の保留事項）を決める。
-6. `full.config.toml`、statusline、keybindings を配布するか決める。
-7. Claude の `settings.json` の一部のキーを `modify_` で管理するか決める。
+2. （完了、2026-11-01）`~/.codex/skills/` の重複5件を退避し、Codex の参照を `~/.agents/skills` に揃えた。
+3. （完了、2026-11-01）my-agent-harness を `ba6934c` に固定して APM で再配布した。
+4. Agents の整理: Claude の手動 Agents と APM 配布 Agents の差を比較し、Claude 側も APM で配布するか、`~/.codex/agents/` の APM 管理外5件をどう扱うかを決める。
+5. WSL での検証: APM の導入・更新、`~/.agents/skills` の配布、Claude 用 symlink、Codex の Skill 一覧を、macOS と同じ手順で確認する。
+6. Claude 用 symlink の管理: まず `scripts/doctor.sh` の読み取り専用の確認を加えるか、chezmoi の `symlink_` で宣言するかを決める（上記 6）。
+7. `~/.apm/apm.yml` / `apm.lock.yaml` を chezmoi で管理するかと、APM 本体の導入方法・更新（[packages](packages.md) の保留事項）を決める。
+8. `full.config.toml`、statusline、keybindings を配布するか決める。
+9. Claude の `settings.json` の一部のキーを `modify_` で管理するか決める。

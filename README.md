@@ -103,5 +103,5 @@ password、API/access/refresh token、private key、credential、cookie、sessio
 - WSL2 Ubuntu 対応（設定・bootstrap・doctor。WSL 環境の構築まで完了）
 - Windows 11 native 対応（PowerShell 7 profile、Windows Terminal fragment、`bootstrap.ps1` / `doctor.ps1`。Windows 実機の doctor で 0 errors / 0 warnings。[docs/windows.md](docs/windows.md)）
 - macOS の保留項目の整理（Java の vendor、mise の古い version、二重導入の CLI など。1件ずつ承認を得て実施。[docs/packages.md](docs/packages.md) の既知の問題）
-- AI 開発ツールの設定の共通化（APM が Skills・Agents・Instructions を配布し、chezmoi はツール設定と APM の宣言ファイルを管理する方針。未実装）
+- AI 開発ツールの設定の共通化（chezmoi がグローバル Instructions（`~/.codex/AGENTS.md`、`~/.claude/CLAUDE.md`）を配布し、APM が Skills と一部の Agents を配布する。`~/.apm/apm.yml` は現在 chezmoi の管理外。macOS は適用済み、WSL・Windows は未検証。[docs/ai-tools.md](docs/ai-tools.md)）
 - 追加候補（starship、tmux、gh の非認証設定など）の個別評価
