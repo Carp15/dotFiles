@@ -283,6 +283,14 @@ chezmoi は lock を読まないので、APM 側の追加・削除は doctor で
 - WSL: 同じ source を使う。偽の `uname` と WSL2 の情報を与えた隔離環境では macOS と同じ動きだった［実測］。実機は未検証。B2 なので、APM を入れる前は何も配置されず、APM の配布後に `chezmoi apply ~/.claude/skills` で作る。
 - Windows native: 既存の `home/.chezmoiignore` で `.claude` を丸ごと除外しているので、何も配置しない［実測、データの上書き］。
 
+**回帰テスト**（`tests/chezmoi-skills.test.sh`、`tests/run.sh` に含まれる）: Skill の宣言や `.chezmoiignore` を変えたら `tests/run.sh` を実行します。3層で確認します。
+
+- 静的検査（chezmoi が無くても実行）: `dot_claude/skills/` に `symlink_<name>.tmpl` 以外が無いこと、各テンプレートが固定の1行（`{{ .chezmoi.homeDir }}/.agents/skills/<ファイル名と同じ name>`）であること、name が `[a-z0-9][a-z0-9-]*` で `cc-notes`・`synced` でないこと、`dot_claude` の下に `exact_` や `skills/` 以外の `symlink_` が無いこと、B2 の除外と Windows の `.claude` の除外が `.chezmoiignore` に残っていること。
+- 挙動テスト（chezmoi 2.73.3 の実測が基準）: 作業ツリーの source のコピーと隔離 HOME で、正常（10件の inode も不変）、APM なし（symlink は作らない。空の `~/.claude/skills` ディレクトリは作られる）、APM だけにある Skill、APM が消した Skill（残った symlink は消さない）、一部だけある Skill、Windows、WSL、リンク先の違い、リンク切れ、実ディレクトリ・通常ファイルの置き換え（危険な挙動を固定して確認）を、`status`、引数なしの `diff`、`verify`、`apply --dry-run --verbose` と隔離 HOME での `apply` で確かめる。`cc-notes`、`synced/`、`.DS_Store`、管理外の symlink が変わらないことも確かめる。`chezmoi diff <ディレクトリ>` が symlink の差分を出さないことも固定している。
+- メタテスト: source のコピーをわざと壊し（空・空白だけのテンプレート、`exact_`、`if`、絶対 path、name の不一致、2行、`cc-notes` の宣言、B2 の削除など）、静的検査または挙動テストが失敗することを確かめる。
+- 隔離: chezmoi の source・HOME・destination・config・state・cache・作業ディレクトリは、symlink を解決した実体 path で `$TEST_TMP/skills` の下にあることを確かめてから実行し、外れていれば実行せずに FAIL にする（live の HOME、`~/.claude`、`~/.agents`、`~/.apm`、`~/.codex`、chezmoi の設定は拒否）。live の APM lock は読まない。macOS ではさらに `tests/run.sh` の `sandbox-exec`（network 禁止、一時ディレクトリの外への書き込み禁止）の中で動く。
+- chezmoi を更新して挙動のテストが失敗したら、期待値を緩めずに、上記の「危険」と「確認のしかた」を確かめ直してから直す。
+
 **ロールバック**: 宣言を追加した commit を revert します。source から宣言が消えても、chezmoi は live の symlink を消さず、管理外になるだけです［仕様］（`exact_` を使っていないため）。live の symlink を失ったときは、上記のバックアップの README の手順（`tar -xpkf` で既存を上書きせずに展開し、`links.manifest` と照合）で戻します。
 
 ### Agents
@@ -417,7 +425,7 @@ Claude Code にはローカルの MCP 設定がありません（`~/.claude.json
 3. （完了、2026-11-01）my-agent-harness を `ba6934c` に固定して APM で再配布した。
 4. Agents の整理: Claude の手動 Agents と APM 配布 Agents の差を比較し、Claude 側も APM で配布するか、`~/.codex/agents/` の APM 管理外5件をどう扱うかを決める。
 5. WSL での検証: APM の導入・更新、`~/.agents/skills` の配布、Claude 用 symlink、Codex の Skill 一覧を、macOS と同じ手順で確認する。
-6. Claude 用 symlink の管理: `scripts/doctor.sh` の読み取り専用の確認（2026-11-01）と、chezmoi の `symlink_` による宣言（2026-11-03、B2 方式）は実装済み（上記 6）。残りは `tests/platform.test.sh` への回帰テストの追加（正常、APM なし、実ディレクトリあり、`cc-notes`・`synced/` が残る、Windows で除外）と、WSL 実機での確認。
+6. Claude 用 symlink の管理: `scripts/doctor.sh` の読み取り専用の確認（2026-11-01）と、chezmoi の `symlink_` による宣言（2026-11-03、B2 方式）は実装済み（上記 6）。回帰テストは `tests/chezmoi-skills.test.sh`（2026-11-03）。残りは WSL 実機での確認。
 7. `~/.apm/apm.yml` / `apm.lock.yaml` を chezmoi で管理するかと、APM 本体の導入方法・更新（[packages](packages.md) の保留事項）を決める。
 8. `full.config.toml`、statusline、keybindings を配布するか決める。
 9. Claude の `settings.json` の一部のキーを `modify_` で管理するか決める。
