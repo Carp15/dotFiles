@@ -1,6 +1,6 @@
 # AI 開発ツール
 
-Claude Code、Codex などの AI 開発ツールの設定を、どこで誰が管理するかの方針です。2026-11-01 の読み取り専用監査（Phase 4D-1）の結果を元にしています。dotfiles が管理するのは、共通の AI 指示（`~/.codex/AGENTS.md` と `~/.claude/CLAUDE.md`、下記 5）だけです。source state（`home/dot_codex/AGENTS.md`、`home/dot_claude/CLAUDE.md`）から、macOS 実機で `chezmoi apply` しました（2026-11-01、Phase 4D-2b-3）。live で chezmoi が管理するのはこの2ファイルだけで、Codex・Claude Code の両方で読み込みを確認しています（下記 5）。WSL・Windows の実機では未検証です。
+Claude Code、Codex などの AI 開発ツールの設定を、どこで誰が管理するかの方針です。2026-11-01 の読み取り専用監査（Phase 4D-1）の結果を元にしています。dotfiles が管理するのは、共通の AI 指示（`~/.codex/AGENTS.md` と `~/.claude/CLAUDE.md`、下記 5）と、Claude Code 用の Skills の symlink の宣言（`~/.claude/skills/<name>`、下記 6）だけです。source state（`home/dot_codex/AGENTS.md`、`home/dot_claude/CLAUDE.md`）から、macOS 実機で `chezmoi apply` しました（2026-11-01、Phase 4D-2b-3）。Codex・Claude Code の両方で読み込みを確認しています（下記 5）。Skills の symlink は、既存の live の symlink とリンク先が完全に一致する形で宣言したので（2026-11-03、Phase 4D-2c-9c）、`chezmoi apply` はしていません。WSL・Windows の実機では未検証です。
 
 記述の根拠を次の5つで区別します。
 
@@ -39,9 +39,9 @@ Skills・Agents の配布元は、GitHub の `Carp15/my-agent-harness`（`~/.apm
 
 | 管理者 | 責務 | 例 |
 | --- | --- | --- |
-| dotfiles（chezmoi） | 共通指示と、再現できる非機密の設定の配布 | `~/.codex/AGENTS.md`、`~/.claude/CLAUDE.md`（下記 5。macOS は適用済み） |
+| dotfiles（chezmoi） | 共通指示と、再現できる非機密の設定の配布 | `~/.codex/AGENTS.md`、`~/.claude/CLAUDE.md`（下記 5。macOS は適用済み）、`~/.claude/skills/<name>` の symlink 10件の宣言（下記 6） |
 | my-agent-harness / APM | Skills と一部の Agents の配布元 | `~/.agents/skills/*`（10件）、`~/.codex/agents/*.toml` のうち9件 |
-| 手動（ユーザー） | どの manager も管理していないもの | `~/.claude/skills/` の symlink 10件、`~/.claude/agents/`、`~/.codex/agents/` の APM 管理外5件（下記 6） |
+| 手動（ユーザー） | どの manager も管理していないもの | `~/.claude/agents/`、`~/.codex/agents/` の APM 管理外5件（下記 6） |
 | Claude Code | Claude 固有の設定と実行時状態 | `~/.claude/settings.json`、`~/.claude.json`、plugins |
 | Codex | Codex 固有の設定と実行時状態 | `~/.codex/config.toml`、plugins、`rules/` |
 | Orca / herdr | 自分が生成・更新する Hooks | Claude の `settings.json` の `hooks`、Codex の `hooks.json` |
@@ -88,7 +88,7 @@ chezmoi の source state（`home/`）に入れません。`~/.claude/` や `~/.c
 
 共通ルールは全 project の Claude / Codex の挙動を変えるため、内容は個別に承認を得て決め、短く保ちます。共通ルール自体に「project 固有の指示を尊重する（安全上の制約は維持する）」と書いています。
 
-`dot_codex/` と `dot_claude/` は `exact_` を付けない通常のディレクトリで、chezmoi はこの2ファイルだけを管理します。`~/.codex/` と `~/.claude/` のほかのファイル（認証、設定、セッション、Skills など）には触れません。
+`dot_codex/` と `dot_claude/` は `exact_` を付けない通常のディレクトリで、chezmoi はこの2ファイルと、`~/.claude/skills/` の下の宣言した symlink（下記 6）だけを管理します。`~/.codex/` と `~/.claude/` のほかのファイル（認証、設定、セッション、Skills の実体、`cc-notes`、`synced/` など）には触れません。
 
 ### 方式を選んだ理由
 
@@ -157,7 +157,7 @@ Windows で `~/` が解決されない場合や、ほかの環境で Claude の 
 | 場所 | 中身［実測］ | 読むツール |
 | --- | --- | --- |
 | `~/.agents/skills/` | APM が配布した10件（実体）。chezmoi-diff-apply、commit、delegate-codex-implementation、delegate-implementation、harness-doctor、ios-device-install、manage-dotfiles、plan、refine-requirements、review | Codex（`user-agent-skills` として）［仕様］ |
-| `~/.claude/skills/` | 上記10件への symlink（手動。下記「Claude Code への公開」）。ほかに、APM 外の手動 Skill `cc-notes`（実体）と、アカウント同期の `synced/` | Claude Code |
+| `~/.claude/skills/` | 上記10件への symlink（chezmoi で宣言。下記「Claude Code への公開」）。ほかに、APM 外の手動 Skill `cc-notes`（実体）と、アカウント同期の `synced/` | Claude Code |
 | `~/.codex/skills/` | `.system/`（Codex 同梱）と `codex-primary-runtime` だけ | Codex（`codex-home-skills` として）［仕様］ |
 
 - ［実測］ Codex は、`~/.codex/skills` と `~/.agents/skills` に同名の Skill があると、重複を除かずに両方を Skill 一覧に載せる。そのため、`~/.codex/skills` には Skill を置かない。
@@ -170,10 +170,10 @@ Windows で `~/` が解決されない場合や、ほかの環境で Claude の 
 
 ### Claude Code への公開
 
-`~/.claude/skills/<name>` を `~/.agents/skills/<name>` への symlink にして、Claude Code から APM 管理の Skills を使っています。**この symlink は APM も chezmoi も管理していない手動のもの**です。形式は `ln -s` で作った絶対 path（`/Users/<user>/.agents/skills/<name>`、末尾の `/` なし）です［実測］。
+`~/.claude/skills/<name>` を `~/.agents/skills/<name>` への symlink にして、Claude Code から APM 管理の Skills を使っています。形式は絶対 path（`/Users/<user>/.agents/skills/<name>`、末尾の `/` なし）です［実測］。2026-11-03 から、この symlink は **chezmoi の `symlink_` で宣言して管理**しています（下記「chezmoi による宣言管理」）。live の10件はもともと `ln -s` で手動で作ったもので、宣言とリンク先が完全に一致するため、作り直していません。APM は Claude 側に何も配置しません。
 
-- APM が Skill を追加しても、Claude 側の symlink は自動では作られない。
-- APM が Skill を消したり名前を変えたりすると、Claude 側の symlink はリンク切れになる。
+- APM が Skill を追加しても、Claude 側の symlink は自動では作られない（dotfiles に宣言を足す）。
+- APM が Skill を消したり名前を変えたりすると、Claude 側の symlink はリンク切れのまま残る（chezmoi は消さない）。
 - `cc-notes` と `synced/` は APM 外の既存のディレクトリとして残し、自動で削除・移動しない。下記の確認は symlink だけを対象にし、この2つには触れない。
 
 整合性の確認（読み取りだけ。macOS の bash と zsh で動作を確認）:
@@ -192,18 +192,20 @@ find ~/.claude/skills -maxdepth 1 -type l -exec sh -c \
 
 1 は名前だけを比べるので、同じ名前で別の場所を指す symlink は 3 で見つけます。
 
-**Skill を追加したとき**（APM の配布後。live の変更なので承認を得てから行う）:
+**Skill を追加したとき**（APM の配布後。dotfiles の変更と live の変更は、それぞれ承認を得てから行う）:
 
-1. `~/.agents/skills/<name>/SKILL.md` があることを確かめる。
-2. `~/.claude/skills/<name>` に、ファイル・ディレクトリ・symlink のどれも無いことを確かめる。何かあれば上書きせずに止める。
-3. `ln -s "$HOME/.agents/skills/<name>" "$HOME/.claude/skills/<name>"` で作る（`-f` は付けない）。
-4. 上の確認 1〜3 を実行し、`~/.claude/skills/<name>/SKILL.md` を symlink 経由で読めることを確かめる。
+1. `~/.agents/skills/<name>/SKILL.md` があり、`~/.apm/apm.lock.yaml` の `deployed_files` に `.agents/skills/<name>` があることを確かめる。
+2. `~/.claude/skills/<name>` に、ファイル・ディレクトリ・symlink のどれも無いことを確かめる。**実ディレクトリや実ファイルがあれば止める**（apply すると中身ごと symlink に置き換わる。下記）。
+3. `home/dot_claude/skills/symlink_<name>.tmpl` を作り、中身を `{{ .chezmoi.homeDir }}/.agents/skills/<name>` の1行だけにする。
+4. `chezmoi status ~/.claude/skills` に `A <name>` だけが出ること、`chezmoi apply --dry-run --verbose ~/.claude/skills` に想定外の削除・置き換えが無いことを確かめる。
+5. 承認を得てから、`chezmoi apply ~/.claude/skills/<name>` で作る（または従来どおり `ln -s "$HOME/.agents/skills/<name>" "$HOME/.claude/skills/<name>"`。`-f` は付けない）。
+6. `chezmoi status ~/.claude/skills` が空になり、上の確認 1〜3 と `scripts/doctor.sh` で問題が無いこと、`~/.claude/skills/<name>/SKILL.md` を symlink 経由で読めることを確かめる。
 
 **Skill を削除・改名したとき**（承認を得てから行う）:
 
-1. 対象が symlink であること（`[ -L ~/.claude/skills/<name> ]`）と、リンク先が `~/.agents/skills/<name>` であることを確かめる。
-2. リンク先が本当に無くなっていること（確認 2 で表示される）と、APM の lock にその Skill が無いことを確かめる。
-3. 消すのは symlink だけにする（`rm ~/.claude/skills/<name>`。`-r` や末尾の `/` は付けない）。実体のディレクトリ、`cc-notes`、`synced/` には触れない。
+1. APM の lock にその Skill が無く、`~/.agents/skills/<name>` が本当に無くなっていることを確かめる。この時点で、chezmoi は `.chezmoiignore` の条件で宣言を除外し、live の symlink はリンク切れのまま残る（doctor が warn を出す）。
+2. `home/dot_claude/skills/symlink_<name>.tmpl` を削除する。
+3. live の symlink を消す。対象が symlink であること（`[ -L ~/.claude/skills/<name> ]`）とリンク先を確かめてから、symlink だけを消す（`rm ~/.claude/skills/<name>`。`-r` や末尾の `/` は付けない）。実体のディレクトリ、`cc-notes`、`synced/` には触れない。
 4. 改名の場合は、新しい名前で「追加したとき」の手順を行う。
 
 #### doctor による整合性確認（実装済み、2026-11-01）
@@ -222,11 +224,66 @@ find ~/.claude/skills -maxdepth 1 -type l -exec sh -c \
 - **管理外**: `cc-notes`、`synced/`、lock に無い symlink（リンク先が別の場所、またはリンク切れで判断できないもの）、`~/.agents/skills` にあって lock に無い Skill は、名前を一覧に表示するだけで変更しない。
 - **対応 OS**: macOS は実機で確認済み（10件すべて ok、doctor 全体で 0 errors / 0 warnings）。WSL・Linux は同じコード（bash 3.2 以降、`cd -P` と `pwd -P` でリンク先を比較）で動く想定だが、実機では未検証。Windows native（`doctor.ps1`）は対象外。
 
-warn が出たら、上記の「Skill を追加したとき」「Skill を削除・改名したとき」の手順で、承認を得てから手で直します。
+warn が出たら、上記の「Skill を追加したとき」「Skill を削除・改名したとき」の手順で、承認を得てから直します。
 
-#### chezmoi による宣言管理（検討中、未実装）
+#### chezmoi による宣言管理（B2 方式、2026-11-03）
 
-chezmoi の `symlink_`（`home/dot_claude/skills/symlink_<name>.tmpl` など）で symlink を宣言して管理する。`dot_claude` は `exact_` ではないので、`cc-notes` と `synced/` には影響しない［仕様］。既存の symlink と同じリンク先なら `chezmoi diff` は空になる見込みだが［推定］、未検証。Skill の追加・削除のたびに dotfiles の変更が要る。Windows は `home/.chezmoiignore` で `.claude` を除外しているため対象外になる。
+chezmoi 2.73.3 の隔離環境での検証（Phase 4D-2c-9b。偽の HOME、network 遮断、書き込みは一時ディレクトリだけ）で方式を比べ、条件付きで宣言する **B2** を採用しました（Phase 4D-2c-9c）。
+
+**宣言**: APM の lock の `deployed_files` にある10件について、`home/dot_claude/skills/symlink_<name>.tmpl` を1つずつ置いています。中身は固定の1行だけです。
+
+```text
+{{ .chezmoi.homeDir }}/.agents/skills/<name>
+```
+
+- 末尾の改行は取り除かれ、リンク先は `<home>/.agents/skills/<name>` になる［実測］。
+- ユーザーの絶対 path を書かない、`if` を入れない、空を返す条件を作らない、`exact_` を使わない、lock に無い Skill を宣言しない。
+
+**B2 の条件付き除外**: `home/.chezmoiignore` の末尾で、宣言した `symlink_*.tmpl` の名前ごとに `~/.agents/skills/<name>` の有無を `stat` で調べ、無ければ `.claude/skills/<name>` を除外します。対象は宣言した名前だけなので、`cc-notes`、`synced/`、`.DS_Store` は管理対象になりません。
+
+| 状態 | chezmoi の動き［実測、隔離環境］ |
+| --- | --- |
+| 正常（10件がそろっている） | 差分なし。apply しても何も変わらない |
+| symlink が無い | `status` に `A`。apply で作る |
+| リンク先が違う、リンク切れ（文字列が違う） | `status` に `M`。apply で張り替える |
+| APM が入っていない（`~/.agents/skills` が無い） | 除外されるので何もしない（固定で宣言する B1 は、リンク切れの symlink を10件作る） |
+| APM が Skill を削除した | 除外されるので、残った symlink を消さない（doctor が warn） |
+| APM が Skill を追加した | 何もしない（宣言を足すまで。doctor が warn） |
+
+**危険（すべて隔離環境で実測）**:
+
+- 宣言した場所に**実ディレクトリ**があると、`chezmoi apply` は**中身ごと削除して symlink に置き換える**。`--no-tty` では確認も出ない（TTY があるときに確認が出るかは［未確認］）。apply の前に、宣言先がすべて symlink か空であることを確かめる。doctor の「exists but is not a symlink」の warn でも分かる。
+- テンプレートの展開結果が**空、または空白だけ**だと、`status` に `D` が出て、apply は**その場所の symlink や実ディレクトリを削除する**。そのため、テンプレートには条件分岐を入れない。
+- `exact_skills` にすると、`cc-notes`、`synced/`、`.DS_Store` が削除される。使わない。
+
+**確認のしかた**: `chezmoi diff ~/.claude/skills` のようにディレクトリを指定した `diff` は、`-r` を付けても中の symlink の差分を表示しない［実測］。`status` が `A`・`M` を出していても空になるので、これだけで正常と判断しない。次を使う。
+
+```sh
+chezmoi status ~/.claude/skills                   # 空なら一致
+chezmoi apply --dry-run --verbose ~/.claude/skills  # 何も出なければ変更予定なし
+chezmoi diff                                      # 引数なし（または対象の symlink を1つずつ指定）
+chezmoi verify ~/.claude/skills                   # 一致しなければ exit code 1
+```
+
+**macOS 実機の状態（2026-11-03）**［実測］: `chezmoi managed` に10件が出て、`chezmoi status`、引数なしの `chezmoi diff`、`chezmoi apply --dry-run --verbose`（全体と `~/.claude/skills`）はすべて空、`chezmoi verify` は exit code 0。`chezmoi apply` はしていない。宣言の前に、10件の symlink をリンクをたどらずにバックアップした（`~/.local/state/dotfiles/backup/phase-4d-2c-9c/20261103T001729/`、README に復元手順）。
+
+**doctor との役割分担**:
+
+| | chezmoi | `scripts/doctor.sh` |
+| --- | --- | --- |
+| 基準 | dotfiles の宣言（`symlink_*.tmpl`） | APM の lock（`deployed_files`） |
+| すること | 宣言した symlink を作る・張り替える（人が apply したとき） | lock と symlink のずれを warn で知らせるだけ |
+| 見つけられるもの | 宣言と live の差 | lock にあって宣言・symlink が無い Skill、リンク切れの残り、実ディレクトリ、`SKILL.md` の欠落 |
+
+chezmoi は lock を読まないので、APM 側の追加・削除は doctor で見つけ、上記の手順で宣言を直します。
+
+**OS ごとの状態**:
+
+- macOS: 上記のとおり。
+- WSL: 同じ source を使う。偽の `uname` と WSL2 の情報を与えた隔離環境では macOS と同じ動きだった［実測］。実機は未検証。B2 なので、APM を入れる前は何も配置されず、APM の配布後に `chezmoi apply ~/.claude/skills` で作る。
+- Windows native: 既存の `home/.chezmoiignore` で `.claude` を丸ごと除外しているので、何も配置しない［実測、データの上書き］。
+
+**ロールバック**: 宣言を追加した commit を revert します。source から宣言が消えても、chezmoi は live の symlink を消さず、管理外になるだけです［仕様］（`exact_` を使っていないため）。live の symlink を失ったときは、上記のバックアップの README の手順（`tar -xpkf` で既存を上書きせずに展開し、`links.manifest` と照合）で戻します。
 
 ### Agents
 
@@ -282,10 +339,10 @@ Agents の内容の統一（Claude 側の手動 Agents と Codex 側の APM 版�
 
 | 方法 | 評価 |
 | --- | --- |
-| ネイティブ参照（APM → `~/.agents/skills`、Claude は symlink） | 現行。採用する。Claude 側の symlink は手動 |
+| ネイティブ参照（APM → `~/.agents/skills`、Claude は symlink） | 現行。採用する。Claude 側の symlink は chezmoi で宣言 |
 | chezmoi で Skill の実体を複製・配置 | 正が APM と二重になるため採用しない |
 | APM で Claude にも配布する（`--target` に claude を含める） | `~/.claude/skills/` に実体が置かれ、「`~/.claude/skills/` には symlink だけを置く」運用に反する。既存の symlink とぶつかったときの挙動は［未確認］。採用しない |
-| chezmoi で `~/.claude/skills/` の symlink を管理 | 検討中（上記「Claude Code への公開」）。macOS・WSL は chezmoi の仕様上は可能［仕様］だが、実機では未検証。Windows は symlink に Developer Mode が要る［仕様］。Skill の追加ごとに dotfiles の変更が要る |
+| chezmoi で `~/.claude/skills/` の symlink を管理 | 採用（2026-11-03、B2 方式。上記「chezmoi による宣言管理」）。macOS は実機で差分なしを確認、WSL は隔離環境だけで確認。Windows は除外。Skill の追加ごとに dotfiles の変更が要る |
 
 ## 7. Hooks / Plugins / MCP の管理方針
 
@@ -324,7 +381,7 @@ Claude Code にはローカルの MCP 設定がありません（`~/.claude.json
 | APM 管理の Skills（`~/.agents/skills`） | 10件を配布済み。Codex で読み込みを確認 | 未検証 | 未検証 |
 | 設定の home | `~/.claude`、`~/.codex` | WSL 側の `~/.claude`、`~/.codex`（Windows と別） | `%USERPROFILE%\.claude`、`.codex`［未確認］ |
 | 共通 AI 指示（`~/.codex/AGENTS.md`、`~/.claude/CLAUDE.md`） | 配布対象（適用・読み込み確認済み） | 配布対象（実機は未検証） | 配布しない（`home/.chezmoiignore` で `.codex`、`.claude` を除外）。Claude の `@~/` が `%USERPROFILE%` に解決されるか［未確認］のため保留 |
-| Claude 用 Skills の symlink | 手動の10件で運用中 | 未検証（symlink 自体は使える見込み［推定］） | 未検証（symlink には Developer Mode が要る［仕様］） |
+| Claude 用 Skills の symlink | chezmoi で10件を宣言（live は既存の symlink と一致。apply 不要） | 同じ宣言を使う。隔離環境で確認済み、実機は未検証。APM の導入前は何も配置しない（B2） | 配置しない（`.claude` を除外） |
 | Orca / herdr の Hooks | 使用中 | 未使用 | bash 前提のため使えない |
 
 - chezmoi で配置する場合、OS ごとの出し分けは `home/.chezmoiignore` と `.chezmoitemplates/platform`（[chezmoi](chezmoi.md)）で行います。
@@ -343,13 +400,13 @@ Claude Code にはローカルの MCP 設定がありません（`~/.claude.json
 
 - **解消（2026-11-01、macOS）Codex の Skills の重複**: `~/.codex/skills/` にあった APM と同名の古いコピー5件を退避し（削除はしていない）、Codex の Skill 一覧の重複は0件になった［実測］（上記 6）。
 - **解消（2026-11-01、macOS）APM の配布が古い**: harness を `ba6934c` に固定して再配布し、`chezmoi-diff-apply` を含む10件を配布した［実測］（上記 2、6）。
-- **Claude 用 Skills の symlink が手動**: APM も chezmoi も管理していない。APM で Skill が増減しても追従せず、削除・改名でリンク切れになる。ずれは `scripts/doctor.sh` が warn で知らせる（修復はしない）。chezmoi による宣言管理は検討中で未実装（上記 6）。
+- **Claude 用 Skills の symlink は APM に追従しない**: 2026-11-03 から chezmoi で宣言しているが（上記 6）、APM で Skill が増減しても宣言は自動では変わらず、削除・改名で残った symlink はリンク切れになる。ずれは `scripts/doctor.sh` が warn で知らせる（修復はしない）。宣言した場所に実ディレクトリがあると apply で置き換わる、空のテンプレートは削除になる、という危険がある（上記 6）。
 - **APM の更新手順の制約**: 0.14.2 は user scope で安全な dry-run が無く、lock と配布を分けられない。`--update` は非推奨。GitHub からの取得は `gh` の認証に依存する。APM 本体の更新後は、手順を検証し直す必要がある。
 - **Agents が統一されていない**: `~/.claude/agents/` は手動で APM の配布対象外。Codex 側の APM 版と内容が揃っているかは未比較。`~/.codex/agents/` の APM 管理外5件の扱いも未決定。
 - **共通 AI 指示は macOS だけ適用済み**: WSL・Windows の実機では、適用も読み込みの確認もしていない。Windows は `home/.chezmoiignore` で配布から外している。
 - **herdr の hook script**: Claude 用と Codex 用で内容が異なる（管理対象外。記録のみ）。
 - **未導入ツールの残骸**: `~/.gemini/`（認証ファイルを含む）、`~/.config/opencode/`。扱いは未決定。
-- **［未確認］** Claude Code が展開した共通ルールと source の全文比較。import 失敗時の挙動。live の `codex debug prompt-input` 後に更新された Codex の状態ファイル・キャッシュの原因と通信の有無。WSL・Windows 実機での配布と読み込み。Windows での `~/` の解決。`instructionFiles` の公式仕様。Windows の `CODEX_HOME` の既定値。WSL・Windows での APM の導入・更新と Skills の配布、Claude 用 symlink の運用。APM 0.14.2 より新しい版での更新手順。chezmoi の `symlink_` に移したときに `chezmoi diff` が空になるか。`~/.claude/skills/synced/` の同期の仕組み。
+- **［未確認］** Claude Code が展開した共通ルールと source の全文比較。import 失敗時の挙動。live の `codex debug prompt-input` 後に更新された Codex の状態ファイル・キャッシュの原因と通信の有無。WSL・Windows 実機での配布と読み込み。Windows での `~/` の解決。`instructionFiles` の公式仕様。Windows の `CODEX_HOME` の既定値。WSL・Windows での APM の導入・更新と Skills の配布、Claude 用 symlink の運用。APM 0.14.2 より新しい版での更新手順。TTY があるときに、chezmoi が実ディレクトリを symlink に置き換える前に確認を出すか。WSL 実機での `symlink_` の宣言の動き。`~/.claude/skills/synced/` の同期の仕組み。
 
 ## 11. Phase 4D-2b 以降の作業候補
 
@@ -360,7 +417,7 @@ Claude Code にはローカルの MCP 設定がありません（`~/.claude.json
 3. （完了、2026-11-01）my-agent-harness を `ba6934c` に固定して APM で再配布した。
 4. Agents の整理: Claude の手動 Agents と APM 配布 Agents の差を比較し、Claude 側も APM で配布するか、`~/.codex/agents/` の APM 管理外5件をどう扱うかを決める。
 5. WSL での検証: APM の導入・更新、`~/.agents/skills` の配布、Claude 用 symlink、Codex の Skill 一覧を、macOS と同じ手順で確認する。
-6. Claude 用 symlink の管理: `scripts/doctor.sh` の読み取り専用の確認は実装済み（2026-11-01）。chezmoi の `symlink_` で宣言して管理するかを決める（上記 6）。
+6. Claude 用 symlink の管理: `scripts/doctor.sh` の読み取り専用の確認（2026-11-01）と、chezmoi の `symlink_` による宣言（2026-11-03、B2 方式）は実装済み（上記 6）。残りは `tests/platform.test.sh` への回帰テストの追加（正常、APM なし、実ディレクトリあり、`cc-notes`・`synced/` が残る、Windows で除外）と、WSL 実機での確認。
 7. `~/.apm/apm.yml` / `apm.lock.yaml` を chezmoi で管理するかと、APM 本体の導入方法・更新（[packages](packages.md) の保留事項）を決める。
 8. `full.config.toml`、statusline、keybindings を配布するか決める。
 9. Claude の `settings.json` の一部のキーを `modify_` で管理するか決める。

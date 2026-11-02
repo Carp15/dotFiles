@@ -48,3 +48,16 @@ Documents
 AppData
 Documents
 {{ end -}}
+{{- /*
+  Claude Code skill links (docs/ai-tools.md): home/dot_claude/skills/symlink_<name>.tmpl
+  points ~/.claude/skills/<name> at the APM-deployed skill in ~/.agents/skills.
+  A link is managed only while that skill exists, so a machine without APM, or
+  a skill APM removed, never gets a dangling link and is never touched. Only
+  the declared symlink_* names are listed; cc-notes and synced/ stay unmanaged.
+*/}}
+{{ range $f := glob (joinPath .chezmoi.sourceDir "dot_claude/skills/symlink_*.tmpl") -}}
+{{ $name := base $f | trimPrefix "symlink_" | trimSuffix ".tmpl" -}}
+{{ if not (stat (joinPath $.chezmoi.homeDir ".agents/skills" $name)) -}}
+.claude/skills/{{ $name }}
+{{ end -}}
+{{ end -}}
