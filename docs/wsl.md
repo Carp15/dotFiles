@@ -142,6 +142,19 @@ codex           # 初回起動時に Sign in with ChatGPT
 
 ブラウザは Windows 側で開きます。開かない場合は、表示された URL を Windows のブラウザに貼り付けます。
 
+### SSH エージェント
+
+WSL には SSH エージェントを起動するデスクトップセッションがないため、`home/dot_zshrc` が `SSH_AUTH_SOCK` を用意します。`~/.ssh/agent/`（OpenSSH 10.1 以降のソケットの置き場所）にある、応答するエージェントを使い回し、なければ1つ起動します。macOS は launchd が `SSH_AUTH_SOCK` を設定するので何もしません。
+
+鍵は自動では読み込みません。WSL を起動し直したあと、最初に一度だけ読み込みます。
+
+```bash
+ssh-add          # パスフレーズを聞かれる。以降のシェルは同じエージェントを使う
+ssh-add -l       # 読み込まれた鍵の確認
+```
+
+WSL を終了すると、古いソケットのファイルが `~/.ssh/agent/` に残ります。応答しないソケットは使われないので、残っていても害はありません。
+
 ## 任意: Windows の PATH を取り込まない
 
 WSL は既定で Windows の PATH を末尾に追加します。`doctor.sh` は `Interop` 行にその件数を表示し、必須コマンドが `/mnt/...` の Windows 実行ファイルに解決された場合は error にします。取り込み自体をやめたい場合は、`/etc/wsl.conf` に次を書き、Windows 側で `wsl --shutdown` してから開き直します。

@@ -35,6 +35,22 @@ if command -v nvim >/dev/null 2>&1; then
   export EDITOR='nvim' VISUAL='nvim'
 fi
 
+# SSH agent. macOS (launchd) and desktop Linux sessions already export
+# SSH_AUTH_SOCK. Elsewhere, such as WSL, reuse a running agent so every shell
+# shares the keys loaded once with ssh-add. OpenSSH 10.1+ puts agent sockets in
+# ~/.ssh/agent/; ssh-add -l exits 2 only when the socket is dead.
+if [[ -z "$SSH_AUTH_SOCK" ]] && command -v ssh-agent >/dev/null 2>&1; then
+  for agent_sock in "$HOME"/.ssh/agent/s.*(N=); do
+    SSH_AUTH_SOCK="$agent_sock" ssh-add -l >/dev/null 2>&1
+    if (( $? != 2 )); then
+      export SSH_AUTH_SOCK="$agent_sock"
+      break
+    fi
+  done
+  unset agent_sock
+  [[ -z "$SSH_AUTH_SOCK" ]] && eval "$(ssh-agent -s)" >/dev/null
+fi
+
 # Completion. fpath already includes Homebrew's site-functions via brew shellenv
 # in zprofile, so compinit picks up completions installed by formulae.
 autoload -Uz compinit && compinit
